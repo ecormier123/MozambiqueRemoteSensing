@@ -18,11 +18,11 @@ install.packages(c("rgdal", "sp"))
 test<-SpatialPointsDataFrame(moz[,3:2], moz, 
                        proj4string = bath@crs)
 test2<-spTransform(test,sat@crs)
-> plot(sat)
-> plot(sat[[1]])
-> plot(test2, add=T)
-> plot(bath2)
-> plot(test2,add=T,pch=5)
+ plot(sat)
+ plot(sat[[1]])
+ plot(test2, add=T)
+ plot(bath2)
+ plot(test2,add=T,pch=5)
 
 
 ##maybe?
@@ -32,7 +32,7 @@ plot(moz+bath2)
 plot(moz)
 
 # Export shapefile
-st_write(oahu_lat_long_sf, 
+st_write(oahu_lat_long_sf, )
 # data.frame
 class(MyData)
 #nir 10m
