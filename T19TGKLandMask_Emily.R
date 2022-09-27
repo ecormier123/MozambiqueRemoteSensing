@@ -1,22 +1,27 @@
+##Mozambique
+#land.shp = shapefile("D:\\HighTide\\landpolygon_edit.shp")
+#water = shapefile("D:\\HighTide\\water.shp")
+gc()
+rm(list=ls())
 library("ncdf4")
 library("raster")
 
 ##
-out.dat = "D:/HighTide/landmaskwater.tif"
+out.dat = ("C:\\Users\\cormi\\Documents\\test\\landmask\\landmaskBimini.tif")
 ## 
-land.shp = shapefile("D:\\HighTide\\landpolygon_edit.shp")
+land.shp = shapefile("C:\\Users\\cormi\\Documents\\test\\landmask\\landpolygon_edit.shp")
 
-water = shapefile("D:\\HighTide\\water.shp")
+water = shapefile("C:\\Users\\cormi\\Documents\\test\\landmask\\water.shp")
 ##
 ##
 thresh.land = 0.2 #land threshold
 thresh.land2 = 0.122#land threshold
-nc.dat ="D:/HighTide/S2B_MSI_2018_10_03_07_49_15_T36KYU_L1R.nc"
+nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
 ##
 
 #Build mask
 nc = nc_open(nc.dat)
-land = t(ncvar_get(nc, nc$var$rhot_1610))
+land = t(ncvar_get(nc, nc$var$rhot_1609))
 land=raster(land)
 nc_atts <- ncatt_get(nc, 0)
 proj4string(land)  = crs(nc_atts$proj4_string)
@@ -25,7 +30,7 @@ land[land>=thresh.land]=2
 land[land<thresh.land]=1
 plot(land)
 #build second mask
-land2 = t(ncvar_get(nc, nc$var$rhot_780))
+land2 = t(ncvar_get(nc, nc$var$rhot_865))
 land2=raster(land2)
 nc_atts <- ncatt_get(nc, 0)
 proj4string(land2)  = crs(nc_atts$proj4_string)
@@ -59,7 +64,7 @@ test[test==1]=NA
 ##
 
 
-writeRaster(test, out.dat, format="GTiff",NAflag = NaN, overwrite=T)
+writeRaster(land3, out.dat, format="GTiff",NAflag = NaN, overwrite=T)
 ##
 ##edit landmask-----
 landmask = "D:/HighTide/landmaskwater.tif"
