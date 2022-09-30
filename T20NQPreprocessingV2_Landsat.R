@@ -99,12 +99,11 @@ neg.mask1[] = neg.mask
 rmaskrs = cloud1*neg.mask1*land
 plot(rmaskrs)
 
-##TEST removing offshore deep water - need to create this mask!!!!testing this
-#offshore=depth<=-31
-#plot(offshore)
-#write.data2= "C:/Users/Cormi/Documents/test/Landsat8_Sept2016_offshore_test.tif"
-#dat.stack2 = mask(x=dat.stack,mask=offshore)
-#writeRaster(dat.stack2, write.data2, format="GTiff",NAflag = NaN, overwrite=T)
+##remove deep water
+offshore=depth<=-31
+plot(offshore)
+#remove 0 values
+offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
 
 #makeroom
 rm(cloud,landmask1,neg.mask,cloud1,neg.mask1)
@@ -113,15 +112,16 @@ rm(cloud,landmask1,neg.mask,cloud1,neg.mask1)
 
 #maskdat.stack and crop
 dat.stack = mask(x=dat.stack, mask = rmaskrs, inverse=T)#land, cloud, neg mask
+#mask dat.stack with offshore
+dat.stack = mask(x=dat.stack, mask = offshoremask, inverse=T)
 
 #to create reverse land mask
 #dat.stack = mask(x=dat.stack, mask = rmaskrs)
 
-
 ##
 nc_close(nc)
 #makeroom
-rm(nc,nc.dat,nc_atts,rmaskrs)
+rm(nc,nc.dat,nc_atts,rmaskrs,offshoremask)
 
 ##createndvilayer
 ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
