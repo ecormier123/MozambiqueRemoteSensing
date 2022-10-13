@@ -5,13 +5,16 @@ library("caret")
 library("irr")
 library("doParallel")  #Foreach Parallel Adaptor 
 library("foreach")     #Provides foreach looping construct
+library("randomForest")
+library("dplyr")
+library(stringi)
 rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 
 setwd("C:\\Users\\cormi\\Documents\\test")
 #Read in raster dataset
 wv.dat = stack("Landsat8_Sept2016_copy.tif")
-names(wv.dat) = c("b","g","r","n", "depth","ndvi","gndvi")
-dep.val = -30 
+names(wv.dat) = c("band_1","band_2","band_3","band_4", "depth","ndvi","gndvi")
+dep.val = -31 
 ndvi.thres = 0.4 
 b.thres = 0.035 
 gr = 0.9
@@ -20,16 +23,34 @@ gr1 = 0.3
 train.dat = shapefile("C:\\Users\\cormi\\Documents\\test\\habitatdata.shp")
 
 #
-list.bands.in = list( c("InptLbl",     "b","g",    "r"))
+list.bands.in = c("Class",     "b","g",    "r")
+
              
 list.out.folder = c("C:\\Users\\cormi\\Documents\\test\\RF")
 UseCores = detectCores() -1-5-5-1
 
 
 ##Generate Training Data 
-train.dat2 =train.dat
+train.dat2 = train.dat
 train.dat = train.dat@data
-#train.dat$InptLbl = as.numeric(train.dat$InptLbl)
+train.dat$Class = as.numeric(train.dat$Class)
+
+
+matchuplandsat = read.csv("pixEx_GeoTIFF_measurements.txt",skip=6,sep="\t")
+
+pointcoordinates =train.dat[,c(3,2)]
+
+number1 = stri_pad(1:9,2,pad = "0")
+number2 = stri_pad(10:56,3,pad = "0")
+number = c(number1,number2)
+vecname = paste0("pin_",number)
+train.dat$Name = vecname
+
+matchups = left_join(train.dat,matchuplandsat,by = "Name" )
+
+rfdata = matchups %>% select(Class,band_1,band_2,band_3,band_4) %>% na.omit()
+
+
 #train.dat$InptLbl = ifelse(train.dat$InptLbl==0,0,
  #                          ifelse(is.na(train.dat$InptLbl)==T,NA,1))
 #train.dat = train.dat[!is.na(train.dat$InptLbl),]
@@ -50,22 +71,36 @@ wv.dat$gn = wv.dat$r/wv.dat$g
 #
 rm(rcl.matrix)
 
-#for (k in 1:length(list.bands.in)){
-#
-out.folder = list.out.folder[k]
-bands.in = list.bands.in[k]
+for (k in 1:length(list.bands.in)){
+#trying out code without using line above as it runs entire process
+out.folder = list.out.folder
+bands.in = list.bands.in
 bands.in = unlist(bands.in)
 #
-
+k=2
+out.folder = list.out.folder[k]
+bands.in = list.bands.in[k]
+#bands.in = unlist(bands.in)
 ##Create directoriers
 dir.create(out.folder)
 dir.create(paste(out.folder,"/cvrun",sep=""))
 
 #Define Model tuning
-ras.value = train.dat[,bands.in]
-ras.value[,1] = as.factor(ras.value[,1])#dependent value as a factor
-rfFit = train(form = InptLbl ~ . , data = ras.value,
-              method = "rf", tuneLength = (dim(ras.value)[2]-2),
+test = wv.dat[56,]
+
+ras.value = train.dat[ ,bands.in]
+
+
+datarf = cbind(train.dat,ras.value)
+#ras.value[1] = as.factor(ras.value[1])#dependent value as a factor
+rfFit = train(form = Class ~ . , data = rfdata,
+              method = "rf",
+              trControl = trainControl(method = "repeatedcv",number = 5,repeats = 10),
+              verbose = TRUE)
+              
+              
+              
+              , tuneLength = (dim(ras.value)[2]-2),
               trControl = trainControl(method = "repeatedcv",number = 5,repeats = 10),
               verbose = TRUE)
 saveRDS(rfFit, paste(out.folder,"tunemodel",sep=""))
@@ -76,7 +111,7 @@ num.mtry = expand.grid(mtry = num.mtry)#only use best mtry evaulated above
 rm(rfFit)
 #
 set.seed(805)
-trainIndex = createMultiFolds(ras.value[,1], k = 5, times = 10)#generate mutliplte data splits
+trainIndex = createMultiFolds(rfdata[,1], k = 5, times = 10)#generate mutliplte data splits
 ###
 registerDoSEQ()#removes previous clusters
 #Define how many cores you want to use and Register CoreCluster
@@ -88,12 +123,13 @@ registerDoParallel(cl)
   library("caret")
   library("irr")
   #Out data
+i=1:50
   full.model = paste(out.folder, "cvrun/", "k",i, ".rds",sep="")
   exp.file = paste(out.folder, "cvrun/", "k",i,".csv",sep="")
   out.ras = paste(out.folder, "cvrun/","k",i,".tif",sep="")
   #Build model
-  ras.valueTrain = ras.value[ trainIndex[[i]],]
-  ras.valueTest  = ras.value[-trainIndex[[i]],]
+  ras.valueTrain = rfdata[ trainIndex[[i]],]
+  ras.valueTest  = rfdata[-trainIndex[[i]],]
   rfFit.k = train(form = InptLbl ~ . , data = ras.valueTrain,
                   method = "rf", 
                   tuneGrid = data.frame(num.mtry),
