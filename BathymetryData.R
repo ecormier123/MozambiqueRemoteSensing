@@ -55,7 +55,6 @@ proj4string(blue)  = crs(nc_atts$proj4_string)
 extent(blue) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
 
 
-
 ##convert crs of csv file to local crs of sat data----
 test<-SpatialPointsDataFrame(moz[,3:2], moz, 
                              proj4string = bath@crs)

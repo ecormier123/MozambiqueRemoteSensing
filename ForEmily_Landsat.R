@@ -5,18 +5,23 @@ library("doParallel")  #Foreach Parallel Adaptor
 library("foreach")     #Provides foreach looping construct
 rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 
-setwd("C://Users//wilsonkri//Documents//Backup-WV//")
+setwd("C:\\Users\\cormi\\Documents\\test")
 
 #Read in raster dataset
-wv.dat = stack("LunenburgBackHarbour//Rasters//BOA-8mmask.tif")
-names(wv.dat) = c( "cb", "b", "g" , "y"  , "r" ,"re" , "n1", "n2")
-depth.mask=wv.dat[[1]]#only used for blank raster to fill
+wv.dat = stack("Landsat8_Sept2016_copy.tif")
+names(wv.dat) = c("b","g","r","n", "depth","ndvi","gndvi")
+#depth.mask=wv.dat[[1]]#only used for blank raster to fill
+
+
 
 #Pick one training dataset
-train.dat = read.csv("LunenburgBackHarbour//FieldDataTransect3mBuffer.csv")
+train.dat = read.csv("C:\\Users\\cormi\\Documents\\test\\Trainingdata.csv")
+#traindat.shp = SpatialPointsDataFrame(coords=train.dat[,3:2],data=train.dat, proj4string=CRS(("+proj=longlat +datum=WGS84 +units=m +no_defs")))
+#train.dat2 <- spTransform(traindat.shp, crs(wv.dat))
+
 #
-list.bands.in = list( c("inptlbl",     "b","g",  "r"))
-list.out.folder = c("./LunenburgBackHarbour/RF/")
+list.bands.in = list( c("Class",     "b","g",  "r"))
+list.out.folder = c("./RF/")
 UseCores = detectCores()-1
 
 
@@ -35,7 +40,7 @@ for (k in 1:length(list.bands.in)){
 bands.in = list.bands.in[k]
 bands.in = unlist(bands.in)
 out.folder = paste(bands.in, collapse = "-")
-out.folder = strsplit(out.folder, "inptlbl-" )[[1]][2]
+out.folder = strsplit(out.folder, "Class-" )[[1]][2]
 out.folder = paste0(list.out.folder,out.folder,"/")
 #
 
@@ -45,8 +50,8 @@ dir.create(paste(out.folder,"/cvrun",sep=""))
 
 #Define Model tuning
 ras.value = train.dat[,bands.in]
-ras.value[,1] = as.factor(ras.value[,1])#dependent value as a factor
-rfFit = train(form = inptlbl ~ . , data = ras.value,
+ras.value[,4] = as.factor(ras.value[,4])#dependent value as a factor
+rfFit = train(form = Class ~ . , data = ras.value,
               method = "rf", tuneLength = (dim(ras.value)[2]-2),
               trControl = trainControl(method = "repeatedcv",number = 5,repeats = 10),
               verbose = TRUE)
@@ -76,7 +81,7 @@ foreach(i=1:50) %dopar% {
   #Build model
   ras.valueTrain = ras.value[ trainIndex[[i]],]
   ras.valueTest  = ras.value[-trainIndex[[i]],]
-  rfFit.k = train(form = inptlbl ~ . , data = ras.valueTrain,
+  rfFit.k = train(form = Class ~ . , data = ras.valueTrain,
                   method = "rf", 
                   tuneGrid = data.frame(num.mtry),
                   trControl = trainControl(method = "none"),
@@ -123,8 +128,8 @@ gc()
 rm(num.mtry,trainIndex,ras.value)
 
 #Generate Mean confusion matrix statistics
-a = list.files(path=paste(out.folder, "cvrun/", sep=""), pattern=".csv")
-ab = paste(out.folder, "cvrun/",a,sep="")
+a = list.files(path=paste(out.folder, "/cvrun", sep=""), pattern=".csv")
+ab = paste(out.folder, "/cvrun",a,sep="")
 my.list = lapply(ab, read.csv)
 my.list  = lapply(my.list , as.matrix)
 rm(a,ab)
