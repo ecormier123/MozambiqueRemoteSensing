@@ -1,9 +1,10 @@
-(list = ls())
+rm(list = ls())
 library("ncdf4")
 library("raster")
 library("rgdal")
 library("fields")
 library("snow")
+library("sf")
 
 
 beginCluster()
@@ -16,7 +17,8 @@ beginCluster()
 depth = raster("C:\\Users\\cormi\\Documents\\test\\bathymetry\\Bathymetry_Bimini_NOAA.tif")
 #import created landmask
 land = raster("C:\\Users\\cormi\\Documents\\test\\landmask\\landmaskBimini.tif")
-
+#need this shapefile, created in Snap, to be able to crop NAs out of depth file after reprojection
+cropdepth = st_read("C:/Users/cormi/Documents/test/landmask/cropdepth_Polygon.shp")
 #import satellite data nc file
 #nc.dat = "C:/Users/Cormi/Documents/test/subset_1_of_S2A_MSI_2021_06_14_07_56_37_T36KYU_L2R.nc"
 nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
@@ -45,9 +47,9 @@ extent(blue) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
 #Depth Data 
 #project depth to same crs as blue
 depth = projectRaster(depth, blue, method="bilinear")
-
+depth = crop(depth,cropdepth)
 ##change all NA to -30 to get rid of NAs in depth file
-depth[is.na(depth[])] = -30 
+depth[is.na(depth[])] = -35
 ##green
 ###get rest of important bands to create final image
 green1 = t(ncvar_get(nc, nc$var$rhos_561))
