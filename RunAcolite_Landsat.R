@@ -2,13 +2,13 @@ rm(list=ls())
 gc()
 
 ##
-in.folder = "C:\\LC08_L1TP_014042_20160508_20200907_02_T1\\LC08_L1TP_014042_20160508_20200907_02_T1"
-out.folder = "C:\\Users\\cormi\\Documents\\test"
-out.settings = "defaultslandsat_test_Sept26_2022.txt"
+in.folder = "C:/LC08_L1TP_014042_20160508_20200907_02_T1/LC08_L1TP_014042_20160508_20200907_02_T1"
+out.folder = "C:/Users/cormi/Documents/test/outputNov17"
+out.settings = "defaultslandsat_test_Nov17_2022.txt"
 ##
 
 #Read in settings file
-set.file = read.delim("C:\\Users\\cormi\\Documents\\acolite_py_win\\config\\defaults.txt",header=F)#Acolite default
+set.file = read.delim("C:/Users/cormi/Documents/acolite_py_win/config/defaults.txt",header=F)#Acolite default
 #define input file
 set.file[3,1] = paste("inputfile=",in.folder,sep="")
 #define output file
@@ -29,11 +29,11 @@ set.file[4,1] = "limit=25.663219,-79.324705,25.801764,-79.198116"
 #set.file[98,1]="dsf_interface_reflectance=True"
 
 #write out the settings file
-write.table(set.file, paste(out.folder,"\\",out.settings,sep=""),row.names=F,col.names=F,quote=F )
+write.table(set.file, paste(out.folder,"/",out.settings,sep=""),row.names=F,col.names=F,quote=F )
 
 
 #Acolite call, have to provide the full paths for it to work
-cmd = paste("C:\\Users\\cormi\\Documents\\acolite_py_win\\dist\\acolite\\acolite.exe --cli --settings=",out.folder,"/",out.settings,sep="")
+cmd = paste("C:/Users/cormi/Documents/acolite_py_win/dist/acolite/acolite.exe --cli --settings=",out.folder,"/",out.settings,sep="")
 shell(cmd) #run acolite
 
 

@@ -21,7 +21,9 @@ land = raster("C:\\Users\\cormi\\Documents\\test\\landmask\\landmaskBimini.tif")
 cropdepth = st_read("C:/Users/cormi/Documents/test/landmask/cropdepth_Polygon.shp")
 #import satellite data nc file
 #nc.dat = "C:/Users/Cormi/Documents/test/subset_1_of_S2A_MSI_2021_06_14_07_56_37_T36KYU_L2R.nc"
-nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
+#nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
+#new file created with fixed DSF fitting rather than tiled which produced negative near-infrared values
+nc.dat = "C:/LC08_L1TP_014042_20160508_20200907_02_T1/L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
 
 #create Output file
 write.data = "C:/Users/Cormi/Documents/test/Landsat8_Sept2016.tif"
@@ -49,7 +51,7 @@ extent(blue) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
 depth = projectRaster(depth, blue, method="bilinear")
 depth = crop(depth,cropdepth)
 ##change all NA to -30 to get rid of NAs in depth file
-depth[is.na(depth[])] = -35
+depth[is.na(depth[])] = -0.1
 ##green
 ###get rest of important bands to create final image
 green1 = t(ncvar_get(nc, nc$var$rhos_561))
@@ -69,11 +71,19 @@ nir = raster(nir1)
 proj4string(nir)  = crs(nc_atts$proj4_string)
 extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
 
+
+
+#had to crop layers in order for the layers to match up now because I had to crop depth to remove NAs
+blue = crop(blue, depth)
+green = crop (green, depth)
+red = crop(red, depth)
+nir = crop(nir, depth)
+
 ##stackalllayerstogether
 dat.stack = stack(blue,green,red,nir,depth)
 
 ##makeroom
-rm(blue,green,red,nir)
+rm(blue,green,red,nir, cropdepth)
 
 ##name the layers in data stack
 names(dat.stack) = c("blue","green","red","nir","depth")
@@ -84,13 +94,31 @@ names(dat.stack) = c("blue","green","red","nir","depth")
 #landmask = ifelse(landmask<="thresh.land",1,NA)#land mask finalized
 
 ##cloud mask written by kristen
-cloud = t(ncvar_get(nc, nc$var$rhot_1373))
-cloud = ifelse(cloud<="thresh.cloud",1,NA)#cloud mask finalized
+#create map for cloud mask of layer 1373, because now the other data is cropped and this is not
 
+cloud = t(ncvar_get(nc, nc$var$rhot_1373))
+#complete threshold calc first with the matrix
+cloud = ifelse(cloud<="thresh.cloud",1,NA)
+#then change into raster
+cloud = raster(cloud)
+proj4string(cloud)  = crs(nc_atts$proj4_string)
+extent(cloud) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+cloud = crop(cloud, depth)
+#change cloud back into matrix to be used in calculations
+cloud = as.matrix(cloud)
+#cloud mask finalized
+
+#same process with cloud is followed for neg mask
 neg.mask = ifelse(blue1<0 | green1<0 | red1<0 | nir1<0, NA, 1)#set to NA if any are negative
+neg.mask = raster(neg.mask)
+proj4string(neg.mask)  = crs(nc_atts$proj4_string)
+extent(neg.mask) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+neg.mask = crop(neg.mask, depth)
+neg.mask = as.matrix(neg.mask)
 
 #makeroom
 rm(blue1,green1,red1,nir1)
+
 ##what do the empty square brackets do?
 cloud1 = dat.stack[[1]]
 cloud1[] = cloud
@@ -98,6 +126,7 @@ neg.mask1 = dat.stack[[1]]
 neg.mask1[] = neg.mask
 
 ##create final mask
+#there witll be a warning about extents not overlapping, but this is fine
 rmaskrs = cloud1*neg.mask1*land
 plot(rmaskrs)
 
@@ -108,7 +137,7 @@ plot(offshore)
 offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
 
 #makeroom
-rm(cloud,landmask1,neg.mask,cloud1,neg.mask1)
+rm(cloud,neg.mask,cloud1,neg.mask1)
 
 
 
@@ -145,7 +174,7 @@ writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
 for(i in 1:4){dat.stack[[i]] = dat.stack[[i]]*10000}
 writeRaster(dat.stack, write.data2, format="GTiff",NAflag = NaN, overwrite=T)
 ##
-
+plot(dat.stack)
 
 
 ##do without depth data----
