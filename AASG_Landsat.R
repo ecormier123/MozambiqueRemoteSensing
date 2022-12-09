@@ -33,3 +33,18 @@ class2022=raster("D:/SeptMay/2022.class.aasg.tif")
 Output_2022$rf
 rf=Output_2022$rf
 dotchart(sort(rf$importance[,(dim(rf$importance)[2]-1)]))
+
+#compare the 2016 image class to the 2022 image class
+
+library(RColorBrewer)
+
+#sets the divisions for colour scheme
+cuts=c(1,1.5,2,2.5,3) #set breaks
+
+#names the colours to be used in the scheme, in this order
+#to choose colours, type, colors() and  a list will appear, or just google it
+pal <- colorRampPalette(c("lightgreen","forestgreen", "cornsilk", "cornsilk"))
+
+#plot the map using above colour scheme and breaks, set NA colour to grey
+plot(class2022, breaks=cuts, col = pal(5), colNA="grey")
+plot(class2016, breaks=cuts, col = pal(5), colNA="grey")

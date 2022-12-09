@@ -9,7 +9,7 @@ rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 
 #Read in raster datasetwithout depth
 #wv.dat2 = stack("Landsat8_Sept2016sansdepth_copy.tif")
-wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016.tif")
+wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May2016.tif")
 #names(wv.dat2) = c("b","g","r","n","ndvi","gndvi")
 names(wv.dat) = c("b","g","r","n","sw1", "sw2", "depth","ndvi","gndvi")
 #remove NAs across board
@@ -26,7 +26,7 @@ train.dat = read.csv("C:/Users/cormi/Documents/ImageProcessing/Reference/InSituD
 #
 #names the columns that should be used in rf model (category of habitat, bgr bands)
 list.bands.in = list( c("Class",     "b","g",  "r", "n","sw1", "sw2","depth","gndvi" ))
-list.out.folder = c("C:/Users/cormi/Documents/ImageProcessing/Reference/")
+list.out.folder = c("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput")
 UseCores = detectCores()-1
 
 #using only b, g, r, layers, this will be used later as the map that the rf model 

@@ -2,8 +2,8 @@ rm(list=ls())
 gc()
 
 ##
-in.folder = "C:/LC08_L1TP_014042_20160508_20200907_02_T1/LC08_L1TP_014042_20160508_20200907_02_T1"
-out.folder = "C:/Users/cormi/Documents/ImageProcessing/Reference"
+in.folder = "C:/Users/cormi/Documents/ImageProcessing/Reference_May/LC08_L1TP_014042_20160508_20200907_02_T1"
+out.folder = "C:/Users/cormi/Documents/ImageProcessing/Reference_May"
 #change the date to match today's date
 date<-paste(format(Sys.time(), "acolite_settings_%Y%m%d_%I%p."),"txt", sep = "")
 out.settings = date

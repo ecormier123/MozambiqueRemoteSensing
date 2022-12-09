@@ -5,9 +5,8 @@ library("rgdal")
 library("fields")
 library("snow")
 library("sf")
+library("RStoolbox")
 
-
-beginCluster()
 
 
 #Mask offshore depth NA NEED TO FIND/how to make?
@@ -23,11 +22,11 @@ cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth
 #nc.dat = "C:/Users/Cormi/Documents/test/subset_1_of_S2A_MSI_2021_06_14_07_56_37_T36KYU_L2R.nc"
 #nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
 #new file created with fixed DSF fitting rather than tiled which produced negative near-infrared values
-nc.dat = "C:/Users/cormi/Documents/ImageProcessing/Reference/L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
+nc.dat = "C:/Users/cormi/Documents/ImageProcessing/Reference_May/L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
 
 #create Output file
-write.data = "C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016.tif"
-write.data2 = "C:/Users/cormi/Documents/ImageProcessing/Reference/PreprocessingOuput/Landsat8_Sept2016x10000.tif"
+write.data = "C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May2016.tif"
+write.data2 = "C:/Users/cormi/Documents/ImageProcessing/Reference/PreprocessingOuput/Landsat8_May2016x10000.tif"
 
 #createoutputfileforinverse
 #write.data = "C:/Users/Cormi/Documents/test/Landsat8_Sept2016_reverselandmask.tif"
@@ -102,6 +101,7 @@ rm(blue,green,red,nir,swir1, swir2, cropdepth)
 
 ##name the layers in data stack
 names(dat.stack) = c("blue","green","red","nir","swir1", "swir2", "depth")
+
 
 ###ifelse returns a value with the same shape as test which is filled with elements selected from either yes or no depending on whether the element of test is TRUE or FALSE."ifelse(test, yes, no)" 
 ##testing to see if this works
