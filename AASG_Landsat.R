@@ -16,18 +16,35 @@ image1<-dropLayer(image1,7)
 #read in processed reference image
 refcl = raster("C:/Users/cormi/Documents/ImageProcessing/Reference/out.tif")
 #read in raster image to be classified, make sure it also only has 6 bands
-image2 = brick("D:/SeptMay/Landsat9_May2022.tif")
 
-#create stable sites
-StableSites = make.mask(image1, image2, refcl)
+out.folder = "D:/finaloutput"
+sat.images.list2 = (list.files(out.folder))
+dir.create("D:/finalfinaloutput")
+#sat.images.list2  = sat.images.list2[-1]
 
-#run aasg algorithm
-Output_2022<-aasg(image1, refcl, image2, c = NULL, dem = NULL, method = "RF", probs = FALSE, StableSites = StableSites)
+for (ii in 1:length(sat.images.list2)){
 
-writeRaster(Output_2022$Classification, "D:/SeptMay/2022.class.aasg.tif", format = "GTiff", 
+  out.folder = "D:/finaloutput"
+  sat.images.list2 = (list.files(out.folder))
+  #sat.images.list2  = sat.images.list2[-1]
+  
+  print(paste("Running ", ii, " of ", length(sat.images.list2), " in satellite images list", sep = ""))
+  
+  image2 = brick (paste(out.folder, "/", sat.images.list2[ii], sep = ""))
+  
+  write.data = paste("D:/finalfinaloutput", "/", sat.images.list2[ii], sep="")
+
+  #create stable sites
+  StableSites = make.mask(image1, image2, refcl)
+
+  #run aasg algorithm
+  Output<-aasg(image1, refcl, image2, c = NULL, dem = NULL, method = "RF", probs = FALSE, StableSites = StableSites)
+
+  writeRaster(Output$Classification, write.data, format = "GTiff", 
             overwrite = TRUE)
+}
 
-class2022=raster("D:/SeptMay/2022.class.aasg.tif")
+#class2022=raster("D:/SeptMay/2022.class.aasg.tif")
 
 #examine rf model 
 Output_2022$rf

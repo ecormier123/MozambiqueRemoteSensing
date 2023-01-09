@@ -2,35 +2,37 @@ rm(list = ls())
 library("raster")
 library("rgdal")
 
-setwd("C:\\Users\\wilsonkri\\Documents\\Backup-Worldview-Data\\20190811")
-raster.dat = "BOA-reflectance-20190811.tif"
-raster.name.dat = c("cb","b","g","y","r","re","n1","n2")
+setwd("C:/Users/cormi/Documents/ImageProcessing")
+raster.dat = brick("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May2016.tif")
+names(raster.dat) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
+raster.name.dat= c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
 raster.dim.use = 5 #number of bands to use the WCC
-depth.dat = "Depth.tif"
 write.data = "Lyzenga1985.tif"
-shape.dat = "./WCC-Station5254-Stripe/"
+#shape.dat is called shape.in because I only have one shape file with all polygons
+shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWateColumnCorrection_Polygon.shp")
+shape.dat = "C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/"
 
-#Read data
-dat = stack(raster.dat,depth.dat)
-names(dat) = c(raster.name.dat,"depth")
 
-#Subset polygon data
-files = list.files(shape.dat, pattern=".shp")
-shape.in = shapefile(paste(shape.dat,files[1],sep=""))
-shape.in@data$pol = 1
-for (i in 2:length(files)){
-  tmp = shapefile(paste(shape.dat,files[i],sep=""))
-  tmp@data$pol = i
-  shape.in =bind(shape.in,tmp)
-  rm(tmp)
-}
-rm(files,i)
-shape.in = spTransform(shape.in, dat@crs)
+#Subset polygon data skipped for now because only have one file with all polygons
+#files = list.files(shape.dat, pattern=".shp")
+#shape.in = shapefile(paste(shape.dat,files[1],sep=""))
+#shape.in@data$pol = 1
+#for (i in 2:length(files)){
+#  i=2
+#  tmp = shapefile(paste(shape.dat,files[i],sep=""))
+#  tmp@data$pol = i
+#  shape.in =bind(shape.in,tmp)
+#  rm(tmp)
+#}
+#rm(files,i)
+
+shape.in = spTransform(shape.in, raster.dat@crs)
 plot(shape.in)
-dat = extract(x=dat,y=shape.in,df=T)
+dat = extract(x=raster.dat,y=shape.in,df=T)
+dat = na.omit(dat)
 rm(shape.in)
 
-#Generate ln
+#Generate ln #
 dat.ln=dat
 dat.ln[,2:(1+length(raster.name.dat))] = log (dat[,2:(1+length(raster.name.dat))])#take natural logarithm
 #Calculate variance
