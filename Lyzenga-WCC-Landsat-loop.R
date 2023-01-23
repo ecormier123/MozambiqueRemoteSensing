@@ -12,17 +12,17 @@ names(raster.dat) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi
 #have to reclassify depth values to remove positive values in depth
 # reclassify the values into three groups 
 # all values > 0 and <= 10 become 0
-m <- c(0, 10, 0)
+#m <- c(0, 10, 0)
 #create a matrix of the above to entire into code below
-rclmat <- matrix(m, ncol=3, byrow=TRUE)
+#rclmat <- matrix(m, ncol=3, byrow=TRUE)
 #transform the raster data layer for depth (7)
-raster.dat[[7]]<-reclassify(raster.dat[[7]],rclmat, right =FALSE)
+#raster.dat[[7]]<-reclassify(raster.dat[[7]],rclmat, right =FALSE)
 #change depth values to absolute values
-raster.dat[[7]]<-abs(raster.dat[[7]])
+#raster.dat[[7]]<-abs(raster.dat[[7]])
 
 #remove ndvi and gndvi layers ( do twice to remove the 8th and 9th layer), ight be easier way to do this
-raster.dat<-dropLayer(raster.dat, 8)
-raster.dat<-dropLayer(raster.dat, 8)
+#raster.dat<-dropLayer(raster.dat, 8)
+#raster.dat<-dropLayer(raster.dat, 8)
 
 names(raster.dat) = c("blue","green","red","nir","swir1", "swir2","depth")
 raster.dat<-raster.dat[[1:3]]
