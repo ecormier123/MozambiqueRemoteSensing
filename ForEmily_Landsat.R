@@ -4,34 +4,55 @@ library("raster")
 library("caret")
 library("irr")
 library("doParallel")  #Foreach Parallel Adaptor 
-library("foreach")     #Provides foreach looping construct
+library("foreach")
+library(sf)
+library(rgdal)
+#Provides foreach looping construct
 rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 
 #Read in raster datasetwithout depth
 #wv.dat2 = stack("Landsat8_Sept2016sansdepth_copy.tif")
-wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May2016.tif")
+wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May.tif")
 #names(wv.dat2) = c("b","g","r","n","ndvi","gndvi")
-names(wv.dat) = c("b","g","r","n","sw1", "sw2", "depth","ndvi","gndvi")
+names(wv.dat) = c("blue","green","red","lyzgr","lyzgrbl","pca1","depth")
 #remove NAs across board
 wv.dat <- mask(wv.dat, calc(wv.dat, fun = sum))
 depth.mask=wv.dat[[1]]#only used for blank raster to fill
 #rm(wv.dat2)
 
 #Pick one training dataset
-train.dat = read.csv("C:/Users/cormi/Documents/ImageProcessing/Reference/InSituData/Trainingdata124.csv")
+#train.dat = read.csv("C:/Users/cormi/Documents/ImageProcessing/Reference/InSituData/Trainingdata124.csv")
 #traindat.shp = SpatialPointsDataFrame(coords=train.dat[,3:2],data=train.dat, proj4string=CRS(("+proj=longlat +datum=WGS84 +units=m +no_defs")))
-#train.dat2 <- spTransform(traindat.shp, crs(wv.dat))
+#train.dat2 <- spTransform(traindat.shp, wv.dat@crs)
 #train.dat3=extract(wv.dat,train.dat2, df=T)
+#train.dat=cbind(train.dat[2:4],train.dat3[2:7])
+
+#Pick one training dataset as shapefile ( I created this one in ArcGIS as a point file)
+#read in one csv file
+mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/Seagrass/Sat_TrainingData3.csv")
+#extract values from raster
+data.shp = read_sf("C:/Users/cormi/Documents/ImageProcessing/Seagrass/Sat_TrainingData2.shp")
+test = extract(wv.dat, data.shp,df=T)
+#create matrix of original csv data points and extracted data
+#withoutdepth
+#mydata = cbind(mydata, test[,2:7])
+#withdepth
+mydata = cbind(mydata, test[,2:8])
+#rm na data points
+mydata2=na.omit(mydata)
+train.dat = mydata2
+head(train.dat)
+rm(test,mydata, mydata2)
 
 #
 #names the columns that should be used in rf model (category of habitat, bgr bands)
-list.bands.in = list( c("Class",     "b","g",  "r", "n","sw1", "sw2","depth","gndvi" ))
+list.bands.in = list( c("Id",    "blue","green","red","lyzgr","lyzgrbl","pca1", "depth"))
 list.out.folder = c("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput")
 UseCores = detectCores()-1
 
 #using only b, g, r, layers, this will be used later as the map that the rf model 
 #predicts onto
-wv.dat = wv.dat[[c( "b", "g" , "r","n","sw1", "sw2","depth","gndvi" )]]
+wv.dat = wv.dat[[c("blue","green","red","lyzgr","lyzgrbl","pca1", "depth")]]
 #gets numerical values from band layers
 wv.dat=getValues(wv.dat)
 #determines where nas exist in dataset
@@ -50,7 +71,7 @@ bands.in = unlist(bands.in)
 #creating b-g-r folder
 out.folder = paste(bands.in, collapse = "-")
 #what is this line doing? what do the 1 and 2 refer to?
-out.folder = strsplit(out.folder, "Class-" )[[1]][2]
+out.folder = strsplit(out.folder, "Id-" )[[1]][2]
 out.folder = paste0(list.out.folder,out.folder,"/")
 #
 
@@ -79,7 +100,7 @@ ras.value = na.omit(ras.value)
 #and recall and precision, better for very imbalnced datasets (prSummary)
 #I am trying prSummary because we have more than two classes? not sure if that's right
 #can't use pr summary because I have 3 levels
-rfFit = train(form = Class ~ . , data = ras.value,
+rfFit = train(form = Id ~ . , data = ras.value,
             method = "rf", tuneLength = (dim(ras.value)[2]-2),
             trControl = trainControl(method = "repeatedcv",number = 5,repeats = 10),
            verbose = TRUE)
@@ -128,7 +149,7 @@ for(i in 1:50){
   #this is the random forest model being trained with our training data to predict habitat by
   #reflectence values, see information above
   #this model now uses best mtry tuning parameter value to assess data (which we defined earlier)
-  rfFit.k = train(form = Class ~ . , data = ras.valueTrain,
+  rfFit.k = train(form = Id ~ . , data = ras.valueTrain,
                   method = "rf",
                   tuneGrid = data.frame(num.mtry),
                   trControl = trainControl(method = "none"),
@@ -143,8 +164,9 @@ for(i in 1:50){
   #Evaluate model on your test data, gives a table of what your test data says vs. what the mdoel predicts
   full.dat=as.data.frame(cbind(rfFit.final,ras.valueTest[,1]))
   # a test on a different type of cunfusion matrix based on youtube video
-  confusionMatrix(reference = ras.valueTest$Class, data = rfFit.final, mode = "everything", positive = "Good")
-  
+ 
+} 
+confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
   #a confusion matrix evaluates whicho be the same
   if (length(unique(full.dat[,1])) == length(unique(full.dat[,2]))){
     conmat = table(full.dat)
@@ -161,7 +183,7 @@ for(i in 1:50){
     conmat=conmat2
     rownames(conmat)=unique(full.dat[,2])
     rm(conmat2,miss.var,fixind)
-  }
+
 }
   conmat = apply(conmat, 2, function(x) as.numeric(as.character(x)))
   #gives metric of cohen's kappa 
@@ -188,7 +210,7 @@ for(i in 1:50){
   out.dat = as.integer(out.dat)#define as integer to reduce file size
   out.dat.raster[id.na] =  out.dat#save output
   #out.dat = out.dat-1
-  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras", format="GTiff",NAflag = NaN,overwrite=T)
+  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/outras2", format="GTiff",NAflag = NaN,overwrite=T)
   ##
   rm(ras.valueTest,ras.valueTrain,exp.file,out.dat, out.ras, out.dat.raster)
     rm(rfFit.k, full.model)

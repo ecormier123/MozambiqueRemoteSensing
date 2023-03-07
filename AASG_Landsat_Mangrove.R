@@ -4,43 +4,42 @@ library("raster")
 source("C:/Users/cormi/Downloads/Automatic_Adaptive_Signature_Generalization_in_R.txt")
 
 #Read in raster dataset for reference image
-image1 = brick("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May.tif")
-#had to crop the image by the AOI crop to make sure that extents matched
-cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
-cropdepth = spTransform(cropdepth, crs(image1))
-image1=crop(image1, cropdepth)
+image1 = brick("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016_mangrove.tif")
 
 #name each layer
 #names(image1) = c("b","g","r","n","sw1", "sw2", "depth","ndvi","gndvi")
 #read in processed reference image
-refcl = raster("C:/Users/cormi/Documents/ImageProcessing/Reference/outras2.tif")
-refcl = crop(refcl, cropdepth)
-#read in raster image to be classified
+refcl = raster("C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove.tif")
+#read in raster image to be classified, make sure it also only has 6 bands
 
-out.folder = "D:/preprocessoutput"
+out.folder = "D:/preprocessoutputmangrove"
 sat.images.list2 = (list.files(out.folder))
-dir.create("D:/AASGoutput")
 #sat.images.list2  = sat.images.list2[-1]
 
-for (ii in 1:length(sat.images.list2)){
+for (ii in 35:length(sat.images.list2)){
 
-  out.folder = "D:/preprocessoutput"
+  out.folder = "D:/preprocessoutputmangrove"
   sat.images.list2 = (list.files(out.folder))
   #sat.images.list2  = sat.images.list2[-1]
+  source("C:/Users/cormi/Downloads/Automatic_Adaptive_Signature_Generalization_in_R.txt")
   
   print(paste("Running ", ii, " of ", length(sat.images.list2), " in satellite images list", sep = ""))
   
+  #Read in raster dataset for reference image
+  image1 = brick("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016_mangrove.tif")
+  
+  #name each layer
+  #names(image1) = c("b","g","r","n","sw1", "sw2", "depth","ndvi","gndvi")
+  #read in processed reference image
+  refcl = raster("C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove.tif")
+  #read in raster image to be classified, make sure it also only has 6 bands
+  
+  
   image2 = brick (paste(out.folder, "/", sat.images.list2[ii], sep = ""))
-  #image2 = brick ("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_May.tif")
-  #had to crop the image by the AOI crop to make sure that extents matched
-  cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
-  cropdepth = spTransform(cropdepth, crs(image1))
-  image2=crop(image2, cropdepth)
   
-  
-  write.map = paste("D:/AASGoutput", "/", sat.images.list2[ii], sep="")
-  write.data = paste("D:/AASGoutput", "/", sat.images.list2[ii],"area.csv", sep="")
-  write.rf = paste("D:/AASGoutput", "/", sat.images.list2[ii],"rf.csv", sep="")
+  write.map = paste("D:/AASGoutputmangrove", "/", sat.images.list2[ii], sep="")
+  write.data = paste("D:/AASGoutputmangrove", "/", sat.images.list2[ii],"manarea.csv", sep="")
+  write.rf = paste("D:/AASGoutputmangrove", "/", sat.images.list2[ii],"manrf.csv", sep="")
   
   #create stable sites
   StableSites = make.mask(image1, image2, refcl)
@@ -62,39 +61,37 @@ for (ii in 1:length(sat.images.list2)){
   p<-data.frame(f, a=(f[,2]*.09))
   
   Classification<-Output$Classification
-  
-  
   #import NS crop polygon
-  NS_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/NorthSound.shp")
-  NS_Crop<-spTransform(x=NS_Crop, CRSobj = '+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs')
+  NB_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/NorthBimini.shp")
+  NB_Crop<-spTransform(x=NB_Crop, CRSobj = '+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs')
   
   #import SL crop polygon
-  SL_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/SharkLand.shp")
-  SL_Crop<-spTransform(x=SL_Crop, CRSobj = '+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs')
+  EB_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/EastBimini.shp")
+  EB_Crop<-spTransform(x=EB_Crop, CRSobj = '+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs')
   
   #import south bimini crop polygon
-  SB_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/SouthBiminiSea.shp")
+  SB_Crop<-readOGR("C:/Users/cormi/Documents/ImageProcessing/Seagrass/SouthBiminiMan.shp")
   SB_Crop<-spTransform(x=SB_Crop, CRSobj = '+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs')
   
   #crop the classification by NS and SL polygons to be able to calculate area of classes within these specific polygons  
-  NS<-crop(Classification,NS_Crop)
-  SL<-crop(Classification,SL_Crop)
+  NB<-crop(Classification,NB_Crop)
+  EB<-crop(Classification,EB_Crop)
   SB<-crop(Classification,SB_Crop)
-
-  #count the frequency of each class type (in number of cells)
-  fNS<-freq(NS)
-  #add a new column that calculates the total area of each class in km2
-  #I ended up with .9 because each cell is 30m*30m=900m2 = 0.09hectares
-  NSp<-data.frame(fNS, aNS=(fNS[,2]*.09))
-  #add column of area of classes to the original data frame
-  p<-cbind(p,NSp[,3])
   
-  fSL<-freq(SL)
+  #count the frequency of each class type (in number of cells)
+  fNB<-freq(NB)
   #add a new column that calculates the total area of each class in km2
   #I ended up with .9 because each cell is 30m*30m=900m2 = 0.09hectares
-  SLp<-data.frame(fSL, aSL=(fSL[,2]*.09))
+  NBp<-data.frame(fNB, aNB=(fNB[,2]*.09))
+  #add column of area of classes to the original data frame
+  p<-cbind(p,NBp[,3])
+  
+  fEB<-freq(EB)
+  #add a new column that calculates the total area of each class in km2
+  #I ended up with .9 because each cell is 30m*30m=900m2 = 0.09hectares
+  EBp<-data.frame(fEB, aEB=(fEB[,2]*.09))
   #add column of area of classess in SL to original data frame
-  p<-cbind(p,SLp[,3])
+  p<-cbind(p,EBp[,3])
   
   fSB<-freq(SB)
   #add a new column that calculates the total area of each class in km2
@@ -103,13 +100,11 @@ for (ii in 1:length(sat.images.list2)){
   #add column of area of classes to the original data frame
   p<-cbind(p,SBp[,3])
   
-  colnames(p)<-c('Class','Count','areakm2','NSareakm2','SLareakm2','SBareakm2')
+  colnames(p)<-c('Class','Count','areakm2','NBareakm2','EBareakm2','SBareakm2')
   
   write.csv(p, write.data)
   
-  rm(f,p,Output,write.map, write.data, StableSites,image2,out.folder, sat.images.list2)
-  
-  
+  rm(f,p,Output,write.map, write.data, StableSites,image2,rf,write.rf)
 }
 
 #class2022=raster("D:/SeptMay/2022.class.aasg.tif")

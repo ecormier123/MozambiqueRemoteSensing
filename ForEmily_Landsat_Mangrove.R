@@ -13,7 +13,7 @@ rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 #wv.dat2 = stack("Landsat8_Sept2016sansdepth_copy.tif")
 wv.dat = stack("C:/Users/Cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016_mangrove.tif")
 #names(wv.dat2) = c("b","g","r","n","ndvi","gndvi")
-names(wv.dat) = c("blue","green","swir1","ndvi", "cmri", "pca1")
+names(wv.dat) = c("blue","green","red","swir1","ndvi", "cmri", "pca1")
 #remove NAs across board
 wv.dat <- mask(wv.dat, calc(wv.dat, fun = sum))
 depth.mask=wv.dat[[1]]#only used for blank raster to fill
@@ -21,19 +21,16 @@ depth.mask=wv.dat[[1]]#only used for blank raster to fill
 
 #Pick one training dataset as shapefile ( I created this one in ArcGIS as a point file)
 mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData.csv")
-mydata=(mydata[1:3])
 #transform csv into shapefile
 #data.shp = SpatialPointsDataFrame(coords=mydata[,2:3],data=mydata, proj4string=CRS("+proj=longlat +datum=WGS84 +units=m +no_defs"))
 #extract values from raster
-data.shp = read_sf("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData.shp")
+data.shp = read_sf("C:/Users/cormi/Documents/ImageProcessing/mangrove/shapefile/Mangrove_trainingData.shp")
 test = extract(wv.dat, data.shp,df=T)
 #create matrix of original csv data points and extracted data
-mydata = cbind(mydata, test[,2:7])
+mydata = cbind(mydata, test[,2:8])
 #rm na data points
 mydata2=na.omit(mydata)
-head(test)
-rm(test)
-##
+head(mydata2)
 rm(test)
 ##
 
@@ -45,13 +42,13 @@ train.dat = mydata2
 
 #
 #names the columns that should be used in rf model (category of habitat, bgr bands)
-list.bands.in = list( c("Id",     "blue","green","swir1","ndvi", "cmri", "pca1"))
+list.bands.in = list( c("Id",     "blue","green","red","swir1","ndvi", "cmri", "pca1"))
 list.out.folder = c("C:/Users/cormi/Documents/ImageProcessing/mangrove")
 UseCores = detectCores()-1
 
 #using only b, g, r, layers, this will be used later as the map that the rf model 
 #predicts onto
-wv.dat = wv.dat[[c( "blue","green","swir1","ndvi", "cmri", "pca1" )]]
+wv.dat = wv.dat[[c( "blue","green","red","swir1","ndvi", "cmri", "pca1" )]]
 #gets numerical values from band layers
 wv.dat=getValues(wv.dat)
 #determines where nas exist in dataset
@@ -136,7 +133,6 @@ for(i in 1:50){
   library("raster")
   library("caret")
   library("irr")
-  k=1
   #Out data
   full.model = paste(out.folder, "cvrun/", "k",i, ".rds",sep="")
   exp.file = paste(out.folder, "cvrun/", "k",i,".csv",sep="")
@@ -164,8 +160,13 @@ for(i in 1:50){
   full.dat=as.data.frame(cbind(rfFit.final,ras.valueTest[,1]))
   # a test on a different type of cunfusion matrix based on youtube video
   confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
-  
-  #a confusion matrix evaluates whicho be the same
+}
+
+confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
+
+#skipe the part below.... could not get it to work and confusion matrix above is just as helpful
+
+  #a confusion matrix evaluates whicho be the same----
   if (length(unique(full.dat[,1])) == length(unique(full.dat[,2]))){
     conmat = table(full.dat)
   }else{
@@ -175,14 +176,15 @@ for(i in 1:50){
     conmat2=rbind(conmat, c(0,0,0))
     #Error in dimnames(x) <- dn : 
     #length of 'dimnames' [1] not equal to array extent
-    rownames(conmat2) = c(rownames(conmat), miss.var)
+    #rownames(conmat2) = c(rownames(conmat), miss.var)
+    rownames(conmat2) = c(rownames(conmat),miss.var)
     fixind = order(row.names(conmat2), decreasing=F)
     conmat2=conmat2[fixind,]
     conmat=conmat2
     rownames(conmat)=unique(full.dat[,2])
     rm(conmat2,miss.var,fixind)
   }
-}
+
   conmat = apply(conmat, 2, function(x) as.numeric(as.character(x)))
   #gives metric of cohen's kappa 
   conkapp = kappa2(full.dat, weight = c("unweighted"))
@@ -201,6 +203,8 @@ for(i in 1:50){
   ##
   set.seed(3)
   
+  
+  
   #finally plot results onto full dataset----
   out.dat = predict(rfFit.k, wv.dat)
   #plot the map of the predicted results
@@ -208,7 +212,7 @@ for(i in 1:50){
   out.dat = as.integer(out.dat)#define as integer to reduce file size
   out.dat.raster[id.na] =  out.dat#save output
   #out.dat = out.dat-1
-  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras", format="GTiff",NAflag = NaN,overwrite=T)
+  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove", format="GTiff",NAflag = NaN,overwrite=T)
   ##
   rm(ras.valueTest,ras.valueTrain,exp.file,out.dat, out.ras, out.dat.raster)
     rm(rfFit.k, full.model)

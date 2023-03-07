@@ -2,9 +2,9 @@ rm(list=ls())
 gc()
 
 ##
-folder = "D:/20122013"
+folder = "D:/AllImagesUsed"
 #the list of satellite images that are in your folder (just their L1 product identifier)
-sat.data = read.csv("D:/SatelliteImagesDownloaded2012_2013.csv")
+sat.data = read.csv("D:/AllImagesUsed/SatelliteImagesDownloaded_AllImagesUsed.csv")
 #turns the csv file of images and other details into just a list of satellite names
 sat.images.list = sat.data$Landsat.Product.Identifier.L1
 #this was another optiojn I tried, but I couldn't figure out how to get it to work
@@ -24,7 +24,7 @@ for (ii in 1:length(sat.images.list))
   
   #this changes the in.folder for ewach lop to match to whichever satellite image you are working on
   in.folder = paste(folder,"/", sat.images.list[ii], sep = "")
-  out.folder = "D:/output"
+  out.folder = "D:/acoliteoutput"
   #change the date to match today's date
   date<-paste(format(Sys.time(), "acolite_settings_%Y%m%d_%I%p."),"txt", sep = "")
   #changes the name of the out.settings to be the name of the satellite image being processed and the date
@@ -88,13 +88,13 @@ library("snow")
 library("sf")
 library("RStoolbox")
 
-out.folder = "D:/output"
+out.folder = "D:/acoliteoutput"
 sat.images.list2 = (list.files(out.folder))
 #sat.images.list2  = sat.images.list2[-1]
 
 for (ii in 1:length(sat.images.list2)) {
   
-  out.folder = "D:/output"
+  out.folder = "D:/acoliteoutput"
   sat.images.list2 = (list.files(out.folder))
   #sat.images.list2  = sat.images.list2[-1]
 
@@ -106,16 +106,16 @@ for (ii in 1:length(sat.images.list2)) {
   nc_atts <- ncatt_get(nc, 0)
   ##
   
-      if (nc_atts$sensor == "L5_ETM"){       
+      if (nc_atts$sensor == "L5_TM"){       
   
-      out.folder = "D:/output"
+      out.folder = "D:/acoliteoutput"
       sat.images.list2 = (list.files(out.folder))
-      write.data = paste("D:/finaloutput", "/", sat.images.list2[ii], ".tif", sep="")
+      write.data = paste("D:/preprocessoutput", "/", sat.images.list2[ii], ".tif", sep="")
   
       #import depth raster from NOAA
       depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
-      #import created landmask
-      land = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/landmaskBimini.tif")
+      #import created watermask
+      water = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/watermaskBimini.tif")
       
       nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
       nc = nc_open(nc.dat)
@@ -144,48 +144,61 @@ for (ii in 1:length(sat.images.list2)) {
       extent(red) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       ##nir
-      nir1 = t(ncvar_get(nc, nc$var$rhos_839))
-      nir = raster(nir1)
-      proj4string(nir)  = crs(nc_atts$proj4_string)
-      extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #nir1 = t(ncvar_get(nc, nc$var$rhos_839))
+      #nir = raster(nir1)
+      #proj4string(nir)  = crs(nc_atts$proj4_string)
+      #extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #added in the 2 swir bands because I think this is what aasg wants
       #swir1
-      swir11 = t(ncvar_get(nc, nc$var$rhos_1678))
-      swir1 = raster(swir11)
-      proj4string(swir1)  = crs(nc_atts$proj4_string)
-      extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir11 = t(ncvar_get(nc, nc$var$rhos_1678))
+      #swir1 = raster(swir11)
+      #proj4string(swir1)  = crs(nc_atts$proj4_string)
+      #extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #swir2
-      swir21 = t(ncvar_get(nc, nc$var$rhos_2217))
-      swir2 = raster(swir21)
-      proj4string(swir2)  = crs(nc_atts$proj4_string)
-      extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir21 = t(ncvar_get(nc, nc$var$rhos_2217))
+      #swir2 = raster(swir21)
+      #proj4string(swir2)  = crs(nc_atts$proj4_string)
+      #extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
+      #landmask
+      #project depth to same crs and extent as other layers
+      water = projectRaster(water, blue, method="bilinear")
+      blue = mask(blue, water)
+      green = mask(green, water)
+      red = mask(red, water)
       
       #Depth Data 
       #project depth to same crs as blue
       depth = projectRaster(depth, blue, method="bilinear")
-      cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
-      depth = crop(depth,cropdepth)
       ##change all NA to -30 to get rid of NAs in depth file
       depth[is.na(depth[])] = -0.1
+      #cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
+      
+      #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
+      #this way no need to add extra layer of cropping and no need to change code yay!
+      cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+      cropdepth = spTransform(cropdepth, crs(depth))
+      depth = mask(depth,cropdepth)
+
       
       #had to crop layers in order for the layers to match up now because I had to crop depth to remove NAs
-      blue = crop(blue, depth)
-      green = crop (green, depth)
-      red = crop(red, depth)
-      nir = crop(nir, depth)
-      swir1 = crop(swir1, depth)
-      swir2 = crop(swir2, depth)
+      blue = mask(blue, cropdepth)
+      green = mask(green, cropdepth)
+      red = mask(red, cropdepth)
+      #nir = crop(nir, depth)
+      #swir1 = crop(swir1, depth)
+      #swir2 = crop(swir2, depth)
       
       ##stackalllayerstogether
-      dat.stack = stack(blue,green,red,nir,swir1, swir2, depth)
+      dat.stack = stack(blue,green,red)
       
       ##makeroom
-      rm(blue,green,red,nir,swir1, swir2)
+      rm(blue,green,red)
       
       ##name the layers in data stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2", "depth")
+      names(dat.stack) = c("blue","green","red")
       
       
       #cloud = t(ncvar_get(nc, nc$var$rhot_1373))
@@ -200,35 +213,29 @@ for (ii in 1:length(sat.images.list2)) {
       #cloud = as.matrix(cloud)
       #cloud mask finalized
       
-      #same process with cloud is followed for neg mask
-      neg.mask = ifelse(blue1<0 | green1<0 | red1<0 | nir1<0 | swir11<0 | swir21<0 , NA, 1)#set to NA if any are negative
-      neg.mask = raster(neg.mask)
-      proj4string(neg.mask)  = crs(nc_atts$proj4_string)
-      extent(neg.mask) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      neg.mask = crop(neg.mask, depth)
-      neg.mask = as.matrix(neg.mask)
+      #Kristen gave me a new more fool proof way to create negative mask:
+      #create one layer which is just the minimum value out of all of the data stack layer
+      #for each of the pixels of the dat stack
+      neg.mask=min(dat.stack, na.rm=T)
+      #use the negative mask to remove anypixels that are overlayed with negative pixels in the neg.mask
+      dat.stack[neg.mask<0]=NA
+      
+      #continue with water mask as expected
       
       #makeroom
-      rm(blue1,green1,red1,nir1)
+      rm(blue1,green1,red1)
       
       ##what do the empty square brackets do?
       #cloud1 = dat.stack[[1]]
       #cloud1[] = cloud
-      neg.mask1 = dat.stack[[1]]
-      neg.mask1[] = neg.mask
+      #neg.mask1 = dat.stack[[1]]
+      #neg.mask1[] = neg.mask
       
       ##create final mask
       #there witll be a warning about extents not overlapping, but this is fine
-      #landmask
-      #project depth to same crs and extent as other layers
-      land = projectRaster(land, depth, method="bilinear")
-      land = crop(land,cropdepth)
-      
-      #rmaskrs = cloud1*neg.mask1*land
-      rmaskrs = neg.mask1*land
       
       ##remove deep water
-      offshore=depth<=-31
+      offshore=depth<=-5
       
       #remove 0 values
       offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
@@ -239,30 +246,43 @@ for (ii in 1:length(sat.images.list2)) {
       
       
       #maskdat.stack and crop
-      dat.stack = mask(x=dat.stack, mask = rmaskrs, inverse=T)#land, cloud, neg mask
+      #preciously, I used the landmask to mask out land and multiplied it by the 
+      #negtaive value mask created above and then ran inverse =T
+      #however, in that case, it would also be masking the inverse of the negative value mask 
+      #which is a mask that has all positive values listed as 1 and negative as NA
+      #so it would be masking the inverse of that mask, so would be masking positive values
+      #so now I changed the mask to a mask of water so that when it is multiplied by the neg mask
+      #anything that is 1 in the neg. mask (which means it was not negative) is 
+      #is multiplied by the water mask so that all values in the mask = positive values 
+      #and water which is what we want to keep
+      
+      #do not worry about paragraph above, new negative mask code from Kristen removes this issue
+      #land, cloud, neg mask
       #mask dat.stack with offshore
       dat.stack = mask(x=dat.stack, mask = offshoremask, inverse=T)
       
-      #to create reverse land mask
+      
+      #to create reverse water mask
       #dat.stack = mask(x=dat.stack, mask = rmaskrs)
       
       ##
       nc_close(nc)
       #makeroom
-      rm(nc,nc.dat,nc_atts,rmaskrs,offshoremask)
+      rm(nc,nc.dat,nc_atts,rmaskrs)
       
       ##createndvilayer
-      ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
+      #ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
       
       ##what is gndvi?
-      gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
+      #gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
       
       #create stack with ndvi and gndvi
-      dat.stack = stack(dat.stack,ndvi,gndvi)
-      rm(ndvi,gndvi)
+      #dat.stack = stack(dat.stack,ndvi,gndvi)
+      #rm(ndvi,gndvi)
+      
       
       ##name layers in dat stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
+      names(dat.stack) = c("blue","green","red")
  
       
   #Lyzenga WCC layers
@@ -273,7 +293,7 @@ for (ii in 1:length(sat.images.list2)) {
       #only use blue green red (sets number of bands to use to 3)
       raster.dim.use = 3 #number of bands to use the WCC
       #shape.dat is called shape.in because I only have one shape file with all polygons
-      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWateColumnCorrection_Polygon.shp")
+      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWaterColumnCorrection_Polygon.shp")
       shape.dat = "C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/"
       
       shape.in = spTransform(shape.in, raster.dat@crs)
@@ -351,24 +371,42 @@ for (ii in 1:length(sat.images.list2)) {
       }
       
       #add WCC layers to raster stack
-      dat.stack = stack(dat.stack,raster.dat)     
+      dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
       
+      names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+      
+      #create pca
+      pca.stack=dat.stack
+      pca.dat = rasterPCA(pca.stack[[1:3]], spca=F)
+      pca.dat = pca.dat$map
+      
+      dat.stack = stack(dat.stack,pca.dat[[1]]) 
+      
+      #crop depth
+      depth<-mask(x=depth, mask=offshoremask, inverse=T)
+      depth = mask(x=depth, mask = water)
+      
+      #try with depth
+      dat.stack = stack(dat.stack, depth)
+      
+      
+      names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","pca1", "depth")
       
       ##make the final raster!
       writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
       
-      rm(depth, land, offshore, dat.stack, swir11, swir21, cropdepth)
+       rm(depth, water, offshore, dat.stack, swir11, swir21, cropdepth, offshoremask, pca.dat, pca.stack, ras.dat, raster.dat, val.in          , raster.dim.use, raster.name.dat, shape.dat, write.data)
       
 } else if (nc_atts$sensor == "L7_ETM"){
       
-       out.folder = "D:/output"
+       out.folder = "D:/acoliteoutput"
        sat.images.list2 = (list.files(out.folder))
-       write.data = paste("D:/finaloutput", "/", sat.images.list2[ii], ".tif", sep="")
+       write.data = paste("D:/preprocessoutput", "/", sat.images.list2[ii], ".tif", sep="")
          
       #import depth raster from NOAA
       depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
-      #import created landmask
-      land = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/landmaskBimini.tif")
+      #import created watermask
+      water = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/watermaskBimini.tif")
       
       nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
       nc = nc_open(nc.dat)
@@ -397,50 +435,62 @@ for (ii in 1:length(sat.images.list2)) {
       extent(red) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
   
       ##nir
-      nir1 = t(ncvar_get(nc, nc$var$rhos_835))
-      nir = raster(nir1)
-      proj4string(nir)  = crs(nc_atts$proj4_string)
-      extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-  
+      #nir1 = t(ncvar_get(nc, nc$var$rhos_839))
+      #nir = raster(nir1)
+      #proj4string(nir)  = crs(nc_atts$proj4_string)
+      #extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
       #added in the 2 swir bands because I think this is what aasg wants
       #swir1
-      swir11 = t(ncvar_get(nc, nc$var$rhos_1650))
-      swir1 = raster(swir11)
-      proj4string(swir1)  = crs(nc_atts$proj4_string)
-      extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-  
+      #swir11 = t(ncvar_get(nc, nc$var$rhos_1678))
+      #swir1 = raster(swir11)
+      #proj4string(swir1)  = crs(nc_atts$proj4_string)
+      #extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
       #swir2
-      swir21 = t(ncvar_get(nc, nc$var$rhos_2208))
-      swir2 = raster(swir21)
-      proj4string(swir2)  = crs(nc_atts$proj4_string)
-      extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-    
+      #swir21 = t(ncvar_get(nc, nc$var$rhos_2217))
+      #swir2 = raster(swir21)
+      #proj4string(swir2)  = crs(nc_atts$proj4_string)
+      #extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
+      #landmask
+      #project depth to same crs and extent as other layers
+      water = projectRaster(water, blue, method="bilinear")
+      blue = mask(blue, water)
+      green = mask(green, water)
+      red = mask(red, water)
+      
       #Depth Data 
       #project depth to same crs as blue
       depth = projectRaster(depth, blue, method="bilinear")
-      cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
-      depth = crop(depth,cropdepth)
       ##change all NA to -30 to get rid of NAs in depth file
       depth[is.na(depth[])] = -0.1
-  
+      #cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
+      
+      #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
+      #this way no need to add extra layer of cropping and no need to change code yay!
+      cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+      cropdepth = spTransform(cropdepth, crs(depth))
+      depth = mask(depth,cropdepth)
+      
       #had to crop layers in order for the layers to match up now because I had to crop depth to remove NAs
-      blue = crop(blue, depth)
-      green = crop (green, depth)
-      red = crop(red, depth)
-      nir = crop(nir, depth)
-      swir1 = crop(swir1, depth)
-      swir2 = crop(swir2, depth)
-  
+      blue = mask(blue, cropdepth)
+      green = mask(green, cropdepth)
+      red = mask(red, cropdepth)
+      #nir = crop(nir, depth)
+      #swir1 = crop(swir1, depth)
+      #swir2 = crop(swir2, depth)
+      
       ##stackalllayerstogether
-      dat.stack = stack(blue,green,red,nir,swir1, swir2, depth)
-  
+      dat.stack = stack(blue,green,red)
+      
       ##makeroom
       rm(blue,green,red,nir,swir1, swir2)
-  
+      
       ##name the layers in data stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2", "depth")
-    
-  
+      names(dat.stack) = c("blue","green","red")
+      
+      
       #cloud = t(ncvar_get(nc, nc$var$rhot_1373))
       #complete threshold calc first with the matrix
       #cloud = ifelse(cloud<="thresh.cloud",1,NA)
@@ -453,35 +503,32 @@ for (ii in 1:length(sat.images.list2)) {
       #cloud = as.matrix(cloud)
       #cloud mask finalized
       
-      #same process with cloud is followed for neg mask
-      neg.mask = ifelse(blue1<0 | green1<0 | red1<0 | nir1<0 | swir11<0 | swir21<0 , NA, 1)#set to NA if any are negative
-      neg.mask = raster(neg.mask)
-      proj4string(neg.mask)  = crs(nc_atts$proj4_string)
-      extent(neg.mask) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      neg.mask = crop(neg.mask, depth)
-      neg.mask = as.matrix(neg.mask)
+      #Kristen gave me a new more fool proof way to create negative mask:
+      #create one layer which is just the minimum value out of all of the data stack layer
+      #for each of the pixels of the dat stack
+      neg.mask=min(dat.stack, na.rm=T)
+      #use the negative mask to remove anypixels that are overlayed with negative pixels in the neg.mask
+      dat.stack[neg.mask<0]=NA
+      
+      #continue with water mask as expected
       
       #makeroom
-      rm(blue1,green1,red1,nir1)
+      rm(blue1,green1,red1)
       
       ##what do the empty square brackets do?
       #cloud1 = dat.stack[[1]]
       #cloud1[] = cloud
-      neg.mask1 = dat.stack[[1]]
-      neg.mask1[] = neg.mask
+      #neg.mask1 = dat.stack[[1]]
+      #neg.mask1[] = neg.mask
       
       ##create final mask
       #there witll be a warning about extents not overlapping, but this is fine
       #landmask
       #project depth to same crs and extent as other layers
-      land = projectRaster(land, depth, method="bilinear")
-      land = crop(land,cropdepth)
-      
-      #rmaskrs = cloud1*neg.mask1*land
-      rmaskrs = neg.mask1*land
+  
       
       ##remove deep water
-      offshore=depth<=-31
+      offshore=depth<=-5
       
       #remove 0 values
       offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
@@ -489,35 +536,48 @@ for (ii in 1:length(sat.images.list2)) {
       #makeroom
       #rm(cloud,neg.mask,cloud1,neg.mask1)
       rm(neg.mask,neg.mask1)
-  
-  
+      
+      
       #maskdat.stack and crop
-      dat.stack = mask(x=dat.stack, mask = rmaskrs, inverse=T)#land, cloud, neg mask
+      #preciously, I used the landmask to mask out land and multiplied it by the 
+      #negtaive value mask created above and then ran inverse =T
+      #however, in that case, it would also be masking the inverse of the negative value mask 
+      #which is a mask that has all positive values listed as 1 and negative as NA
+      #so it would be masking the inverse of that mask, so would be masking positive values
+      #so now I changed the mask to a mask of water so that when it is multiplied by the neg mask
+      #anything that is 1 in the neg. mask (which means it was not negative) is 
+      #is multiplied by the water mask so that all values in the mask = positive values 
+      #and water which is what we want to keep
+      
+      #do not worry about paragraph above, new negative mask code from Kristen removes this issue
+     #land, cloud, neg mask
       #mask dat.stack with offshore
       dat.stack = mask(x=dat.stack, mask = offshoremask, inverse=T)
-  
-      #to create reverse land mask
+      
+      
+      #to create reverse water mask
       #dat.stack = mask(x=dat.stack, mask = rmaskrs)
-  
+      
       ##
       nc_close(nc)
       #makeroom
-      rm(nc,nc.dat,nc_atts,rmaskrs,offshoremask)
-  
-      ##createndvilayer
-      ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
-  
-      ##what is gndvi?
-      gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
-  
-      #create stack with ndvi and gndvi
-      dat.stack = stack(dat.stack,ndvi,gndvi)
-      rm(ndvi,gndvi)
-  
-      ##name layers in dat stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
+      rm(nc,nc.dat,nc_atts,rmaskrs)
       
-  #Lyzenga WCC layers
+      ##createndvilayer
+      #ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
+      
+      ##what is gndvi?
+      #gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
+      
+      #create stack with ndvi and gndvi
+      #dat.stack = stack(dat.stack,ndvi,gndvi)
+      #rm(ndvi,gndvi)
+      
+      ##name layers in dat stack
+      names(dat.stack) = c("blue","green","red")
+      
+      
+      #Lyzenga WCC layers
       raster.dat<-dat.stack[[1:3]]
       names(raster.dat) = c("blue2", "green2", "red2")
       
@@ -525,7 +585,7 @@ for (ii in 1:length(sat.images.list2)) {
       #only use blue green red (sets number of bands to use to 3)
       raster.dim.use = 3 #number of bands to use the WCC
       #shape.dat is called shape.in because I only have one shape file with all polygons
-      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWateColumnCorrection_Polygon.shp")
+      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWaterColumnCorrection_Polygon.shp")
       shape.dat = "C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/"
       
       shape.in = spTransform(shape.in, raster.dat@crs)
@@ -603,21 +663,41 @@ for (ii in 1:length(sat.images.list2)) {
       }
       
       #add WCC layers to raster stack
-      dat.stack = stack(dat.stack,raster.dat)
+      dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+      
+      names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+      
+      #create pca
+      pca.stack=dat.stack
+      pca.dat = rasterPCA(pca.stack[[1:3]], spca=F)
+      pca.dat = pca.dat$map
+      
+      dat.stack = stack(dat.stack,pca.dat[[1]])
+      
+      #crop depth
+      depth<-mask(x=depth, mask=offshoremask, inverse=T)
+      depth = mask(x=depth, mask = water)
+      
+      #try with depth
+      dat.stack = stack(dat.stack, depth)
+      
+      names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","pca1", "depth")
       
       ##make the final raster!
       writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
+      
+       rm(depth, water, offshore, dat.stack, swir11, swir21, cropdepth, offshoremask, pca.dat, pca.stack, ras.dat, raster.dat, val.in          , raster.dim.use, raster.name.dat, shape.dat, write.data)
   
 } else if (nc_atts$sensor == "L8_OLI") {  
     
-      out.folder = "D:/output"
+      out.folder = "D:/acoliteoutput"
       sat.images.list2 = (list.files(out.folder))
-      write.data = paste("D:/finaloutput", "/", sat.images.list2[ii], ".tif", sep="")
+      write.data = paste("D:/preprocessoutput", "/", sat.images.list2[ii], ".tif", sep="")
       
       #import depth raster from NOAA
       depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
-      #import created landmask
-      land = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/landmaskBimini.tif")
+      #import created watermask
+      water = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/watermaskBimini.tif")
       
       nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
       nc = nc_open(nc.dat)
@@ -646,127 +726,148 @@ for (ii in 1:length(sat.images.list2)) {
       extent(red) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       ##nir
-      nir1 = t(ncvar_get(nc, nc$var$rhos_865))
-      nir = raster(nir1)
-      proj4string(nir)  = crs(nc_atts$proj4_string)
-      extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #nir1 = t(ncvar_get(nc, nc$var$rhos_839))
+      #nir = raster(nir1)
+      #proj4string(nir)  = crs(nc_atts$proj4_string)
+      #extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #added in the 2 swir bands because I think this is what aasg wants
       #swir1
-      swir11 = t(ncvar_get(nc, nc$var$rhos_1609))
-      swir1 = raster(swir11)
-      proj4string(swir1)  = crs(nc_atts$proj4_string)
-      extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir11 = t(ncvar_get(nc, nc$var$rhos_1678))
+      #swir1 = raster(swir11)
+      #proj4string(swir1)  = crs(nc_atts$proj4_string)
+      #extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #swir2
-      swir21 = t(ncvar_get(nc, nc$var$rhos_2201))
-      swir2 = raster(swir21)
-      proj4string(swir2)  = crs(nc_atts$proj4_string)
-      extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir21 = t(ncvar_get(nc, nc$var$rhos_2217))
+      #swir2 = raster(swir21)
+      #proj4string(swir2)  = crs(nc_atts$proj4_string)
+      #extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
+      #landmask
+      #project depth to same crs and extent as other layers
+      water = projectRaster(water, blue, method="bilinear")
+      blue = mask(blue, water)
+      green = mask(green, water)
+      red = mask(red, water)
       
       #Depth Data 
       #project depth to same crs as blue
       depth = projectRaster(depth, blue, method="bilinear")
-      cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
-      depth = crop(depth,cropdepth)
       ##change all NA to -30 to get rid of NAs in depth file
       depth[is.na(depth[])] = -0.1
+      #cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
+      
+      #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
+      #this way no need to add extra layer of cropping and no need to change code yay!
+      cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+      cropdepth = spTransform(cropdepth, crs(depth))
+      depth = mask(depth,cropdepth)
       
       #had to crop layers in order for the layers to match up now because I had to crop depth to remove NAs
-      blue = crop(blue, depth)
-      green = crop (green, depth)
-      red = crop(red, depth)
-      nir = crop(nir, depth)
-      swir1 = crop(swir1, depth)
-      swir2 = crop(swir2, depth)
+      blue = mask(blue, cropdepth)
+      green = mask(green, cropdepth)
+      red = mask(red, cropdepth)
+      #nir = crop(nir, depth)
+      #swir1 = crop(swir1, depth)
+      #swir2 = crop(swir2, depth)
       
       ##stackalllayerstogether
-      dat.stack = stack(blue,green,red,nir,swir1, swir2, depth)
+      dat.stack = stack(blue,green,red)
       
       ##makeroom
       rm(blue,green,red,nir,swir1, swir2)
       
       ##name the layers in data stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2", "depth")
+      names(dat.stack) = c("blue","green","red")
       
       
-      cloud = t(ncvar_get(nc, nc$var$rhot_1373))
+      #cloud = t(ncvar_get(nc, nc$var$rhot_1373))
       #complete threshold calc first with the matrix
-      cloud = ifelse(cloud<="thresh.cloud",1,NA)
+      #cloud = ifelse(cloud<="thresh.cloud",1,NA)
       #then change into raster
-      cloud = raster(cloud)
-      proj4string(cloud)  = crs(nc_atts$proj4_string)
-      extent(cloud) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      cloud = crop(cloud, depth)
+      #cloud = raster(cloud)
+      #proj4string(cloud)  = crs(nc_atts$proj4_string)
+      #extent(cloud) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #cloud = crop(cloud, depth)
       #change cloud back into matrix to be used in calculations
-      cloud = as.matrix(cloud)
+      #cloud = as.matrix(cloud)
       #cloud mask finalized
       
-      #same process with cloud is followed for neg mask
-      neg.mask = ifelse(blue1<0 | green1<0 | red1<0 | nir1<0 | swir11<0 | swir21<0 , NA, 1)#set to NA if any are negative
-      neg.mask = raster(neg.mask)
-      proj4string(neg.mask)  = crs(nc_atts$proj4_string)
-      extent(neg.mask) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      neg.mask = crop(neg.mask, depth)
-      neg.mask = as.matrix(neg.mask)
+      #Kristen gave me a new more fool proof way to create negative mask:
+      #create one layer which is just the minimum value out of all of the data stack layer
+      #for each of the pixels of the dat stack
+      neg.mask=min(dat.stack, na.rm=T)
+      #use the negative mask to remove anypixels that are overlayed with negative pixels in the neg.mask
+      dat.stack[neg.mask<0]=NA
+      
+      #continue with water mask as expected
       
       #makeroom
-      rm(blue1,green1,red1,nir1)
+      rm(blue1,green1,red1)
       
       ##what do the empty square brackets do?
-      cloud1 = dat.stack[[1]]
-      cloud1[] = cloud
-      neg.mask1 = dat.stack[[1]]
-      neg.mask1[] = neg.mask
+      #cloud1 = dat.stack[[1]]
+      #cloud1[] = cloud
+      #neg.mask1 = dat.stack[[1]]
+      #neg.mask1[] = neg.mask
       
       ##create final mask
       #there witll be a warning about extents not overlapping, but this is fine
       #landmask
       #project depth to same crs and extent as other layers
-      land = projectRaster(land, depth, method="bilinear")
-      land = crop(land,cropdepth)
-      
-      rmaskrs = cloud1*neg.mask1*land
-      
+ 
       ##remove deep water
-      offshore=depth<=-31
+      offshore=depth<=-5
       
       #remove 0 values
       offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
       
       #makeroom
-      rm(cloud,neg.mask,cloud1,neg.mask1)
-      
+      #rm(cloud,neg.mask,cloud1,neg.mask1)
+      rm(neg.mask,neg.mask1)
       
       
       #maskdat.stack and crop
-      dat.stack = mask(x=dat.stack, mask = rmaskrs, inverse=T)#land, cloud, neg mask
+      #preciously, I used the landmask to mask out land and multiplied it by the 
+      #negtaive value mask created above and then ran inverse =T
+      #however, in that case, it would also be masking the inverse of the negative value mask 
+      #which is a mask that has all positive values listed as 1 and negative as NA
+      #so it would be masking the inverse of that mask, so would be masking positive values
+      #so now I changed the mask to a mask of water so that when it is multiplied by the neg mask
+      #anything that is 1 in the neg. mask (which means it was not negative) is 
+      #is multiplied by the water mask so that all values in the mask = positive values 
+      #and water which is what we want to keep
+      
+      #do not worry about paragraph above, new negative mask code from Kristen removes this issue
+      #land, cloud, neg mask
       #mask dat.stack with offshore
       dat.stack = mask(x=dat.stack, mask = offshoremask, inverse=T)
       
-      #to create reverse land mask
+      
+      #to create reverse water mask
       #dat.stack = mask(x=dat.stack, mask = rmaskrs)
       
       ##
       nc_close(nc)
       #makeroom
-      rm(nc,nc.dat,nc_atts,rmaskrs,offshoremask)
+      rm(nc,nc.dat,nc_atts,rmaskrs)
       
       ##createndvilayer
-      ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
+      #ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
       
       ##what is gndvi?
-      gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
+      #gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
       
       #create stack with ndvi and gndvi
-      dat.stack = stack(dat.stack,ndvi,gndvi)
-      rm(ndvi,gndvi)
+      #dat.stack = stack(dat.stack,ndvi,gndvi)
+      #rm(ndvi,gndvi)
       
       ##name layers in dat stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
+      names(dat.stack) = c("blue","green","red")
       
       
-  #Lyzenga WCC layers
+      #Lyzenga WCC layers
       raster.dat<-dat.stack[[1:3]]
       names(raster.dat) = c("blue2", "green2", "red2")
       
@@ -774,7 +875,7 @@ for (ii in 1:length(sat.images.list2)) {
       #only use blue green red (sets number of bands to use to 3)
       raster.dim.use = 3 #number of bands to use the WCC
       #shape.dat is called shape.in because I only have one shape file with all polygons
-      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWateColumnCorrection_Polygon.shp")
+      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWaterColumnCorrection_Polygon.shp")
       shape.dat = "C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/"
       
       shape.in = spTransform(shape.in, raster.dat@crs)
@@ -852,21 +953,41 @@ for (ii in 1:length(sat.images.list2)) {
       }
       
       #add WCC layers to raster stack
-      dat.stack = stack(dat.stack,raster.dat)
+      dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+      
+      names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+      
+      #create pca
+      pca.stack=dat.stack
+      pca.dat = rasterPCA(pca.stack[[1:3]], spca=F)
+      pca.dat = pca.dat$map
+      
+      dat.stack = stack(dat.stack,pca.dat[[1]]) 
+      
+      #crop depth
+      depth<-mask(x=depth, mask=offshoremask, inverse=T)
+      depth = mask(x=depth, mask = water)
+      
+      #try with depth
+      dat.stack = stack(dat.stack, depth)
+      
+      names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","pca1", "depth")
       
       ##make the final raster!
       writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
       
+       rm(depth, water, offshore, dat.stack, swir11, swir21, cropdepth, offshoremask, pca.dat, pca.stack, ras.dat, raster.dat, val.in          , raster.dim.use, raster.name.dat, shape.dat, write.data)
+      
 } else {
       
-      out.folder = "D:/output"
+      out.folder = "D:/acoliteoutput"
       sat.images.list2 = (list.files(out.folder))
-      write.data = paste("D:/finaloutput", "/", sat.images.list2[ii], ".tif", sep="")
+      write.data = paste("D:/preprocessoutput", "/", sat.images.list2[ii], ".tif", sep="")
       
       #import depth raster from NOAA
       depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
-      #import created landmask
-      land = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/landmaskBimini.tif")
+      #import created watermask
+      water = raster("C:/Users/cormi/Documents/ImageProcessing/landmask/watermaskBimini.tif")
       
       nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
       nc = nc_open(nc.dat)
@@ -895,128 +1016,148 @@ for (ii in 1:length(sat.images.list2)) {
       extent(red) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       ##nir
-      nir1 = t(ncvar_get(nc, nc$var$rhos_865))
-      nir = raster(nir1)
-      proj4string(nir)  = crs(nc_atts$proj4_string)
-      extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #nir1 = t(ncvar_get(nc, nc$var$rhos_839))
+      #nir = raster(nir1)
+      #proj4string(nir)  = crs(nc_atts$proj4_string)
+      #extent(nir) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #added in the 2 swir bands because I think this is what aasg wants
       #swir1
-      swir11 = t(ncvar_get(nc, nc$var$rhos_1608))
-      swir1 = raster(swir11)
-      proj4string(swir1)  = crs(nc_atts$proj4_string)
-      extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir11 = t(ncvar_get(nc, nc$var$rhos_1678))
+      #swir1 = raster(swir11)
+      #proj4string(swir1)  = crs(nc_atts$proj4_string)
+      #extent(swir1) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
       
       #swir2
-      swir21 = t(ncvar_get(nc, nc$var$rhos_2201))
-      swir2 = raster(swir21)
-      proj4string(swir2)  = crs(nc_atts$proj4_string)
-      extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #swir21 = t(ncvar_get(nc, nc$var$rhos_2217))
+      #swir2 = raster(swir21)
+      #proj4string(swir2)  = crs(nc_atts$proj4_string)
+      #extent(swir2) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      
+      #landmask
+      #project depth to same crs and extent as other layers
+      water = projectRaster(water, blue, method="bilinear")
+      blue = mask(blue, water)
+      green = mask(green, water)
+      red = mask(red, water)
       
       #Depth Data 
       #project depth to same crs as blue
       depth = projectRaster(depth, blue, method="bilinear")
-      cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
-      depth = crop(depth,cropdepth)
       ##change all NA to -30 to get rid of NAs in depth file
       depth[is.na(depth[])] = -0.1
+      #cropdepth = st_read("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
+      
+      #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
+      #this way no need to add extra layer of cropping and no need to change code yay!
+      cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+      cropdepth = spTransform(cropdepth, crs(depth))
+      depth = mask(depth,cropdepth)
       
       #had to crop layers in order for the layers to match up now because I had to crop depth to remove NAs
-      blue = crop(blue, depth)
-      green = crop (green, depth)
-      red = crop(red, depth)
-      nir = crop(nir, depth)
-      swir1 = crop(swir1, depth)
-      swir2 = crop(swir2, depth)
+      blue = mask(blue, cropdepth)
+      green = mask(green, cropdepth)
+      red = mask(red, cropdepth)
+      #nir = crop(nir, depth)
+      #swir1 = crop(swir1, depth)
+      #swir2 = crop(swir2, depth)
       
       ##stackalllayerstogether
-      dat.stack = stack(blue,green,red,nir,swir1, swir2, depth)
+      dat.stack = stack(blue,green,red)
       
       ##makeroom
       rm(blue,green,red,nir,swir1, swir2)
       
       ##name the layers in data stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2", "depth")
+      names(dat.stack) = c("blue","green","red")
       
       
-      cloud = t(ncvar_get(nc, nc$var$rhot_1373))
+      #cloud = t(ncvar_get(nc, nc$var$rhot_1373))
       #complete threshold calc first with the matrix
-      cloud = ifelse(cloud<="thresh.cloud",1,NA)
+      #cloud = ifelse(cloud<="thresh.cloud",1,NA)
       #then change into raster
-      cloud = raster(cloud)
-      proj4string(cloud)  = crs(nc_atts$proj4_string)
-      extent(cloud) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      cloud = crop(cloud, depth)
+      #cloud = raster(cloud)
+      #proj4string(cloud)  = crs(nc_atts$proj4_string)
+      #extent(cloud) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
+      #cloud = crop(cloud, depth)
       #change cloud back into matrix to be used in calculations
-      cloud = as.matrix(cloud)
+      #cloud = as.matrix(cloud)
       #cloud mask finalized
       
-      #same process with cloud is followed for neg mask
-      neg.mask = ifelse(blue1<0 | green1<0 | red1<0 | nir1<0 | swir11<0 | swir21<0 , NA, 1)#set to NA if any are negative
-      neg.mask = raster(neg.mask)
-      proj4string(neg.mask)  = crs(nc_atts$proj4_string)
-      extent(neg.mask) = c(nc_atts$xrange,nc_atts$yrange[2],nc_atts$yrange[1])
-      neg.mask = crop(neg.mask, depth)
-      neg.mask = as.matrix(neg.mask)
+      #Kristen gave me a new more fool proof way to create negative mask:
+      #create one layer which is just the minimum value out of all of the data stack layer
+      #for each of the pixels of the dat stack
+      neg.mask=min(dat.stack, na.rm=T)
+      #use the negative mask to remove anypixels that are overlayed with negative pixels in the neg.mask
+      dat.stack[neg.mask<0]=NA
+      
+      #continue with water mask as expected
       
       #makeroom
-      rm(blue1,green1,red1,nir1)
+      rm(blue1,green1,red1)
       
       ##what do the empty square brackets do?
-      cloud1 = dat.stack[[1]]
-      cloud1[] = cloud
-      neg.mask1 = dat.stack[[1]]
-      neg.mask1[] = neg.mask
+      #cloud1 = dat.stack[[1]]
+      #cloud1[] = cloud
+      #neg.mask1 = dat.stack[[1]]
+      #neg.mask1[] = neg.mask
       
       ##create final mask
       #there witll be a warning about extents not overlapping, but this is fine
       #landmask
       #project depth to same crs and extent as other layers
-      land = projectRaster(land, depth, method="bilinear")
-      land = crop(land,cropdepth)
-      
-      rmaskrs = cloud1*neg.mask1*land
       
       ##remove deep water
-      offshore=depth<=-31
+      offshore=depth<=-5
       
       #remove 0 values
       offshoremask <- clamp(offshore, lower=1, useValues=FALSE)
       
       #makeroom
-      rm(cloud,neg.mask,cloud1,neg.mask1)
-      
+      #rm(cloud,neg.mask,cloud1,neg.mask1)
+      rm(neg.mask,neg.mask1)
       
       
       #maskdat.stack and crop
-      dat.stack = mask(x=dat.stack, mask = rmaskrs, inverse=T)#land, cloud, neg mask
+      #preciously, I used the landmask to mask out land and multiplied it by the 
+      #negtaive value mask created above and then ran inverse =T
+      #however, in that case, it would also be masking the inverse of the negative value mask 
+      #which is a mask that has all positive values listed as 1 and negative as NA
+      #so it would be masking the inverse of that mask, so would be masking positive values
+      #so now I changed the mask to a mask of water so that when it is multiplied by the neg mask
+      #anything that is 1 in the neg. mask (which means it was not negative) is 
+      #is multiplied by the water mask so that all values in the mask = positive values 
+      #and water which is what we want to keep
+      
+      #do not worry about paragraph above, new negative mask code from Kristen removes this issue
+      #land, cloud, neg mask
       #mask dat.stack with offshore
       dat.stack = mask(x=dat.stack, mask = offshoremask, inverse=T)
       
-      #to create reverse land mask
+      
+      #to create reverse water mask
       #dat.stack = mask(x=dat.stack, mask = rmaskrs)
       
       ##
       nc_close(nc)
       #makeroom
-      rm(nc,nc.dat,nc_atts,rmaskrs,offshoremask)
+      rm(nc,nc.dat,nc_atts,rmaskrs)
       
       ##createndvilayer
-      ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
+      #ndvi = (dat.stack$nir-dat.stack$red)/(dat.stack$nir+dat.stack$red)
       
       ##what is gndvi?
-      gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
+      #gndvi = (dat.stack$nir-dat.stack$green)/(dat.stack$nir+dat.stack$green)
       
       #create stack with ndvi and gndvi
-      dat.stack = stack(dat.stack,ndvi,gndvi)
-      rm(ndvi,gndvi)
+      #dat.stack = stack(dat.stack,ndvi,gndvi)
+      #rm(ndvi,gndvi)
       
       ##name layers in dat stack
-      names(dat.stack) = c("blue","green","red","nir","swir1", "swir2","depth", "ndvi","gndvi")
+      names(dat.stack) = c("blue","green","red")
       
       
-      
- #Lyzenga WCC layers
+      #Lyzenga WCC layers
       raster.dat<-dat.stack[[1:3]]
       names(raster.dat) = c("blue2", "green2", "red2")
       
@@ -1024,7 +1165,7 @@ for (ii in 1:length(sat.images.list2)) {
       #only use blue green red (sets number of bands to use to 3)
       raster.dim.use = 3 #number of bands to use the WCC
       #shape.dat is called shape.in because I only have one shape file with all polygons
-      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWateColumnCorrection_Polygon.shp")
+      shape.in = shapefile("C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/sandWaterColumnCorrection_Polygon.shp")
       shape.dat = "C:/Users/cormi/Documents/ImageProcessing/Water Column Correction/"
       
       shape.in = spTransform(shape.in, raster.dat@crs)
@@ -1102,9 +1243,32 @@ for (ii in 1:length(sat.images.list2)) {
       }
       
       #add WCC layers to raster stack
-      dat.stack = stack(dat.stack,raster.dat)
+      dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+      
+      names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+      
+      #create pca
+      pca.stack=dat.stack
+      pca.dat = rasterPCA(pca.stack[[1:3]], spca=F)
+      pca.dat = pca.dat$map
+      
+      dat.stack = stack(dat.stack,pca.dat[[1]]) 
+      
+      #crop depth
+      depth<-mask(x=depth, mask=offshoremask, inverse=T)
+      depth = mask(x=depth, mask = water)
+      
+      #try with depth
+      dat.stack = stack(dat.stack, depth)
+      
+      names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","pca1", "depth")
       
       ##make the final raster!
       writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
+      
+      rm(depth, water, offshore, dat.stack, swir11, swir21, cropdepth, offshoremask, pca.dat, pca.stack, ras.dat, raster.dat, val.in
+         , raster.dim.use, raster.name.dat, shape.dat, write.data)
       }
 }
+
+   

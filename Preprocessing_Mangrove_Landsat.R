@@ -103,10 +103,10 @@ pca.dat = rasterPCA(pca.stack[[1:5]], spca=F)
 pca.dat = pca.dat$map
 
 #stack all layers together
-dat.stack = stack(blue, green, swir1, ndvi, cmri, pca.dat[[1]])
+dat.stack = stack(blue, green, red, swir1, ndvi, cmri, pca.dat[[1]])
 
 ##name layers in dat stack
-names(dat.stack) = c("blue","green","swir1","ndvi", "cmri", "pca1")
+names(dat.stack) = c("blue","green","red", "swir1","ndvi", "cmri", "pca1")
 
 rm(blue,green,red,nir,swir1,ndvi,cmri,pca.dat)
 
