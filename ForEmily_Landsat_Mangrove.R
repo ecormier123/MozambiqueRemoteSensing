@@ -11,30 +11,55 @@ rasterOptions(maxmemory=7e+09,chunksize = 4e+08)
 
 #Read in raster datasetwithout depth
 #wv.dat2 = stack("Landsat8_Sept2016sansdepth_copy.tif")
-wv.dat = stack("C:/Users/Cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016_mangrove.tif")
+#for 2016 image
+#wv.dat = stack("C:/Users/Cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/Landsat8_Sept2016_mangrove.tif")
+#for landsat 5
+#wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/L5_TM_2007_04_30_15_38_30_014042_L2R.ncmangrove.tif")
+#for landsat 7
+wv.dat = stack("C:/Users/cormi/Documents/ImageProcessing/Reference/PreProcessingOutput/L7_ETM_2000_02_14_15_36_34_014042_L2R.ncmangrove.tif")
+#try without pca
+#for 2016
+#wv.dat = stack(wv.dat[[1:3]], wv.dat[[5:6]])
 #names(wv.dat2) = c("b","g","r","n","ndvi","gndvi")
-names(wv.dat) = c("blue","green","red","swir1","ndvi", "cmri", "pca1")
+#withoutswir1 and without pca
+names(wv.dat) = c("blue","green","red","ndvi", "cmri")
+#names(wv.dat) = c("blue","green","red","swir1","ndvi", "cmri")
+#names(wv.dat) = c("blue","green","red","swir1","ndvi", "cmri", "pca1")
 #remove NAs across board
 wv.dat <- mask(wv.dat, calc(wv.dat, fun = sum))
 depth.mask=wv.dat[[1]]#only used for blank raster to fill
 #rm(wv.dat2)
 
 #Pick one training dataset as shapefile ( I created this one in ArcGIS as a point file)
-mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData.csv")
+#mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData.csv")
+#to use the data where lakes are removed and sand and developed are combined
+#for 2016 image
+#mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData-2016_nolakesbarrenswamp_sand-dev_veg-man.csv")
+#for landsat 5
+#mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData-200704-_nolakesbarrenswamp_sand-dev_veg-man.csv")
+#for landsat 7
+mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData-200002_nolakesbarrenswamp_sand-dev_veg-man.csv")
+#to use to classify without barren vegetation (add to sand/dev class)
+#mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData_nolakes_sand-dev-barren.csv")
+#mydata=read.csv("C:/Users/cormi/Documents/ImageProcessing/mangrove/Mangrove_trainingData_nolakes_nobarren_sand-dev.csv")
 #transform csv into shapefile
-#data.shp = SpatialPointsDataFrame(coords=mydata[,2:3],data=mydata, proj4string=CRS("+proj=longlat +datum=WGS84 +units=m +no_defs"))
+#data.shp = SpatialPointsDataFrame(coords=mydata[,1:2],data=mydata, proj4string=CRS("+proj=longlat +datum=WGS84 +units=m +no_defs"))
 #extract values from raster
-data.shp = read_sf("C:/Users/cormi/Documents/ImageProcessing/mangrove/shapefile/Mangrove_trainingData.shp")
-test = extract(wv.dat, data.shp,df=T)
+#data.shp = read_sf("C:/Users/cormi/Documents/ImageProcessing/mangrove/shapefile/Mangrove_trainingData.shp")
+test = extract(wv.dat, mydata[,1:2],df=T)
 #create matrix of original csv data points and extracted data
-mydata = cbind(mydata, test[,2:8])
+#withoutpca and swir
+mydata = cbind(mydata, test[,2:6])
+#withpca
+#mydata = cbind(mydata, test[,2:8])
+
 #rm na data points
 mydata2=na.omit(mydata)
 head(mydata2)
 rm(test)
 ##
 
-write.csv(mydata2,"C:/Users/cormi/Documents/ImageProcessing/Reference/InSituData/Trainingdatamangrove.csv", row.names = F)
+#write.csv(mydata2,"C:/Users/cormi/Documents/ImageProcessing/Reference/InSituData/Trainingdatamangrove.csv", row.names = F)
 train.dat = mydata2
 #traindat.shp = SpatialPointsDataFrame(coords=train.dat[,3:2],data=train.dat, proj4string=CRS(("+proj=longlat +datum=WGS84 +units=m +no_defs")))
 #train.dat2 <- spTransform(traindat.shp, crs(wv.dat))
@@ -42,13 +67,17 @@ train.dat = mydata2
 
 #
 #names the columns that should be used in rf model (category of habitat, bgr bands)
-list.bands.in = list( c("Id",     "blue","green","red","swir1","ndvi", "cmri", "pca1"))
+#list.bands.in = list( c("Id",     "blue","green","red","swir1","ndvi", "cmri", "pca1"))
+#withoutpca and swir
+list.bands.in = list( c("Id",     "blue","green","red","ndvi", "cmri"))
 list.out.folder = c("C:/Users/cormi/Documents/ImageProcessing/mangrove")
 UseCores = detectCores()-1
 
 #using only b, g, r, layers, this will be used later as the map that the rf model 
 #predicts onto
-wv.dat = wv.dat[[c( "blue","green","red","swir1","ndvi", "cmri", "pca1" )]]
+#wv.dat = wv.dat[[c( "blue","green","red","swir1","ndvi", "cmri", "pca1" )]]
+#withoutpca and swir
+wv.dat = wv.dat[[c( "blue","green","red","ndvi", "cmri")]]
 #gets numerical values from band layers
 wv.dat=getValues(wv.dat)
 #determines where nas exist in dataset
@@ -158,11 +187,11 @@ for(i in 1:50){
   
   #Evaluate model on your test data, gives a table of what your test data says vs. what the mdoel predicts
   full.dat=as.data.frame(cbind(rfFit.final,ras.valueTest[,1]))
-  # a test on a different type of cunfusion matrix based on youtube video
-  confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
 }
-
-confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
+# for mor ethan one class
+#confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everything", positive = "Good")
+#for only 2 class
+confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final)
 
 #skipe the part below.... could not get it to work and confusion matrix above is just as helpful
 
@@ -212,8 +241,12 @@ confusionMatrix(reference = ras.valueTest$Id, data = rfFit.final, mode = "everyt
   out.dat = as.integer(out.dat)#define as integer to reduce file size
   out.dat.raster[id.na] =  out.dat#save output
   #out.dat = out.dat-1
-  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove", format="GTiff",NAflag = NaN,overwrite=T)
-  ##
+  #writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove-2016-nolakes_sand-dev-veg-nopca-noswir-final", format="GTiff",NAflag = NaN,overwrite=T)
+  # for landsat 5
+  #writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove-200704L5-nolakes_sand-dev-veg-nopca-noswir-final", format="GTiff",NAflag = NaN,overwrite=T)
+  # for landsat 7
+  writeRaster(out.dat.raster, "C:/Users/cormi/Documents/ImageProcessing/Reference/out.ras.mangrove-200002L7-nolakes_sand-dev-veg-nopca-noswir-final", format="GTiff",NAflag = NaN,overwrite=T)
+  
   rm(ras.valueTest,ras.valueTrain,exp.file,out.dat, out.ras, out.dat.raster)
     rm(rfFit.k, full.model)
   

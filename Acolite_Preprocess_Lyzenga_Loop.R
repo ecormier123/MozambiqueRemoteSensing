@@ -94,6 +94,9 @@ sat.images.list2 = (list.files(out.folder))
 
 for (ii in 1:length(sat.images.list2)) {
   
+  #to run the april 2017 image only ( or any specific image) skip the for code above and then start here
+  #but make sure to load packages, check the number of the image by looking at sat.images.list2
+  #ii=28
   out.folder = "D:/acoliteoutput"
   sat.images.list2 = (list.files(out.folder))
   #sat.images.list2  = sat.images.list2[-1]

@@ -7,13 +7,14 @@ library("snow")
 library("sf")
 library("RStoolbox")
 
-out.folder = "D:/cloudyimagespostacolite"
+out.folder = "D:/acoliteoutput"
+#out.folder = "D:/cloudyimagespostacolite"
 sat.images.list2 = (list.files(out.folder))
 #sat.images.list2  = sat.images.list2[-1]
 
 for (ii in 1:length(sat.images.list2)) {
   
-  out.folder = "D:/cloudyimagespostacolite"
+  out.folder = "D:/acoliteoutput"
   sat.images.list2 = (list.files(out.folder))
   #sat.images.list2  = sat.images.list2[-1]
   
@@ -27,7 +28,7 @@ for (ii in 1:length(sat.images.list2)) {
   
   if (nc_atts$sensor == "L5_TM"){       
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
     write.data = paste("D:/preprocessmangrovecloudy", "/", sat.images.list2[ii], "mangrove.tif", sep="")
     
@@ -113,10 +114,13 @@ for (ii in 1:length(sat.images.list2)) {
     #tried using this but just got a blank raster...
 
     #stack all layers together
-    dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
+    #remove swir because it changes between sensors in different landsat missions
+    dat.stack = stack(blue, green, red, ndvi, cmri)
+    #dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
     
     ##name layers in dat stack
-    names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
+    names(dat.stack) = c("blue","green","red","ndvi", "cmri")
+    #names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
     
     rm(blue,green,red,nir,swir1,ndvi,cmri)
     
@@ -149,7 +153,7 @@ for (ii in 1:length(sat.images.list2)) {
     
   } else if (nc_atts$sensor == "L7_ETM"){
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
     write.data = paste("D:/preprocessmangrovecloudy", "/", sat.images.list2[ii], "mangrove.tif", sep="")
     nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")  
@@ -234,10 +238,13 @@ for (ii in 1:length(sat.images.list2)) {
     #tried using this but just got a blank raster...
     
     #stack all layers together
-    dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
+    #remove swir because it changes between sensors in different landsat missions
+    dat.stack = stack(blue, green, red, ndvi, cmri)
+    #dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
     
     ##name layers in dat stack
-    names(dat.stack) = c("blue","green", "red","swir1","ndvi", "cmri")
+    names(dat.stack) = c("blue","green","red","ndvi", "cmri")
+    #names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
     
     rm(blue,green,red,nir,swir1,ndvi,cmri)
     
@@ -270,7 +277,7 @@ for (ii in 1:length(sat.images.list2)) {
     
   } else if (nc_atts$sensor == "L8_OLI") {  
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
     write.data = paste("D:/preprocessmangrovecloudy", "/", sat.images.list2[ii], "mangrove.tif", sep="")
     nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
@@ -356,10 +363,13 @@ for (ii in 1:length(sat.images.list2)) {
     
 
     #stack all layers together
-    dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
+    #remove swir because it changes between sensors in different landsat missions
+    dat.stack = stack(blue, green, red, ndvi, cmri)
+    #dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
     
     ##name layers in dat stack
-    names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
+    names(dat.stack) = c("blue","green","red","ndvi", "cmri")
+    #names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
     
     rm(blue,green,red,nir,swir1,ndvi,cmri)
     
@@ -391,7 +401,7 @@ for (ii in 1:length(sat.images.list2)) {
     
   } else {
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
     write.data = paste("D:/preprocessmangrovecloudy", "/", sat.images.list2[ii], "mangrove.tif", sep="")
     nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
@@ -476,10 +486,13 @@ for (ii in 1:length(sat.images.list2)) {
     #tried using this but just got a blank raster...
  
     #stack all layers together
-    dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
+    #remove swir because it changes between sensors in different landsat missions
+    dat.stack = stack(blue, green, red, ndvi, cmri)
+    #dat.stack = stack(blue, green, red, swir1, ndvi, cmri)
     
     ##name layers in dat stack
-    names(dat.stack) = c("blue","green","red", "swir1","ndvi", "cmri")
+    names(dat.stack) = c("blue","green","red","ndvi", "cmri")
+    #names(dat.stack) = c("blue","green","red","swir1","ndvi", "cmri")
     
     rm(blue,green,red,nir,swir1,ndvi,cmri)
        

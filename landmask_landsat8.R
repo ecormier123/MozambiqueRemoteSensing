@@ -13,9 +13,9 @@ out.dat.shp = ("C:\\Users\\cormi\\Documents\\ImageProcessing\\landmask\\landmask
 ##
 ##
 #thresh.land = 0.2 #land threshold
-thresh.land2 = 0.025#land threshold
+thresh.land2 = 0.045#land threshold
 #use nc file of satellite image to be able to get a reference coordinate system
-nc.dat ="C:\\Users\\cormi\\Documents\\test\\L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
+nc.dat ="C:/Users/cormi/Documents/ImageProcessing/Reference/L8_OLI_2016_05_08_15_43_25_014042_L2R.nc"
 nc = nc_open(nc.dat)
 ##
 

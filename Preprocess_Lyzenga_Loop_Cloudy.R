@@ -11,13 +11,13 @@ library("snow")
 library("sf")
 library("RStoolbox")
 
-out.folder = "D:/cloudyimagespostacolite"
+out.folder = "D:/acoliteoutput"
 sat.images.list2 = (list.files(out.folder))
 #sat.images.list2  = sat.images.list2[-1]
 
 for (ii in 1:length(sat.images.list2)) {
   
-  out.folder = "D:/cloudyimagespostacolite"
+  out.folder = "D:/acoliteoutput"
   sat.images.list2 = (list.files(out.folder))
   #sat.images.list2  = sat.images.list2[-1]
   
@@ -27,13 +27,22 @@ for (ii in 1:length(sat.images.list2)) {
   nc.dat = paste(out.folder, "/", sat.images.list2[ii], sep = "")
   nc = nc_open(nc.dat)
   nc_atts <- ncatt_get(nc, 0)
+  
+  library("ncdf4")
+  library("raster")
+  library("rgdal")
+  library("fields")
+  library("snow")
+  library("sf")
+  library("RStoolbox")
   ##
   
   if (nc_atts$sensor == "L5_TM"){       
     
-    out.folder = "D:/cloudyimagespostacolite"
+    
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
-    write.data = paste("D:/preprocessoutputcloudy", "/", sat.images.list2[ii], ".tif", sep="")
+    write.data = paste("D:/preprocessoutputcloudy/bgr-lyzgr-lyzgrbl-depth", "/", sat.images.list2[ii], ".tif", sep="")
     
     #import depth raster from NOAA
     depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
@@ -101,7 +110,7 @@ for (ii in 1:length(sat.images.list2)) {
     
     #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
     #this way no need to add extra layer of cropping and no need to change code yay!
-    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
     cropdepth = spTransform(cropdepth, crs(depth))
     depth = mask(depth,cropdepth)
     
@@ -294,8 +303,8 @@ for (ii in 1:length(sat.images.list2)) {
       raster.dat[[i]] = ras.dat[[val.in[i,1]]]-(val.in$slope[i]*ras.dat[[val.in[i,2]]])
     }
     
-    #add WCC layers to raster stack
-    dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+    #add WCC layers to raster stack (lyzengas green and red)
+    dat.stack = stack(dat.stack,raster.dat[[3]], raster.dat[[1]]) 
     
     names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
     
@@ -312,13 +321,13 @@ for (ii in 1:length(sat.images.list2)) {
     ##make the final raster!
     writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
     
-    rm(depth, water, offshore, dat.stack, swir11, swir21, cropdepth)
+    rm(list = ls())
     
   } else if (nc_atts$sensor == "L7_ETM"){
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
-    write.data = paste("D:/preprocessoutputcloudy", "/", sat.images.list2[ii], ".tif", sep="")
+    write.data = paste("D:/preprocessoutputcloudy/bgr-lyzgr-lyzgrbl-depth", "/", sat.images.list2[ii], ".tif", sep="")
     
     #import depth raster from NOAA
     depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
@@ -386,7 +395,7 @@ for (ii in 1:length(sat.images.list2)) {
     
     #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
     #this way no need to add extra layer of cropping and no need to change code yay!
-    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
     cropdepth = spTransform(cropdepth, crs(depth))
     depth = mask(depth,cropdepth)
     
@@ -578,11 +587,12 @@ for (ii in 1:length(sat.images.list2)) {
       raster.dat[[i]] = ras.dat[[val.in[i,1]]]-(val.in$slope[i]*ras.dat[[val.in[i,2]]])
     }
     
-    #add WCC layers to raster stack
-    dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+    #add WCC layers to raster stack (lyzengas green and red)
+    dat.stack = stack(dat.stack,raster.dat[[3]], raster.dat[[1]]) 
     
     names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
-
+    
+    
     #crop depth
     depth<-mask(x=depth, mask=offshoremask, inverse=T)
     depth = mask(x=depth, mask = water)
@@ -590,7 +600,7 @@ for (ii in 1:length(sat.images.list2)) {
     #try with depth
     dat.stack = stack(dat.stack, depth)
     
-    names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","depth")
+    names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl", "depth")
     
     ##make the final raster!
     writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
@@ -599,9 +609,9 @@ for (ii in 1:length(sat.images.list2)) {
     
   } else if (nc_atts$sensor == "L8_OLI") {  
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
-    write.data = paste("D:/preprocessoutputcloudy", "/", sat.images.list2[ii], ".tif", sep="")
+    write.data = paste("D:/preprocessoutputcloudy/bgr-lyzgr-lyzgrbl-depth", "/", sat.images.list2[ii], ".tif", sep="")
     
     #import depth raster from NOAA
     depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
@@ -669,7 +679,7 @@ for (ii in 1:length(sat.images.list2)) {
     
     #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
     #this way no need to add extra layer of cropping and no need to change code yay!
-    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
     cropdepth = spTransform(cropdepth, crs(depth))
     depth = mask(depth,cropdepth)
     
@@ -861,10 +871,11 @@ for (ii in 1:length(sat.images.list2)) {
       raster.dat[[i]] = ras.dat[[val.in[i,1]]]-(val.in$slope[i]*ras.dat[[val.in[i,2]]])
     }
     
-    #add WCC layers to raster stack
-    dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+    #add WCC layers to raster stack (lyzengas green and red)
+    dat.stack = stack(dat.stack,raster.dat[[3]], raster.dat[[1]]) 
     
     names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+    
     
     #crop depth
     depth<-mask(x=depth, mask=offshoremask, inverse=T)
@@ -873,7 +884,7 @@ for (ii in 1:length(sat.images.list2)) {
     #try with depth
     dat.stack = stack(dat.stack, depth)
     
-    names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl","depth")
+    names(dat.stack)=c("blue","green","red","lyzgr","lyzgrbl", "depth")
     
     ##make the final raster!
     writeRaster(dat.stack, write.data, format="GTiff",NAflag = NaN, overwrite=T)
@@ -882,9 +893,9 @@ for (ii in 1:length(sat.images.list2)) {
     
   } else {
     
-    out.folder = "D:/cloudyimagespostacolite"
+    out.folder = "D:/acoliteoutput"
     sat.images.list2 = (list.files(out.folder))
-    write.data = paste("D:/preprocessoutputcloudy", "/", sat.images.list2[ii], ".tif", sep="")
+    write.data = paste("D:/preprocessoutputcloudy/bgr-lyzgr-lyzgrbl-depth", "/", sat.images.list2[ii], ".tif", sep="")
     
     #import depth raster from NOAA
     depth = raster("C:/Users/cormi/Documents/ImageProcessing/bathymetry/Bathymetry_Bimini_NOAA.tif")
@@ -952,7 +963,7 @@ for (ii in 1:length(sat.images.list2)) {
     
     #have changed the crop depth to crop the AOI instead, because the AOI covers the area that crop depth would anyways
     #this way no need to add extra layer of cropping and no need to change code yay!
-    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/bathymetry/AOI_crop2_Polygon.shp")
+    cropdepth =readOGR("C:/Users/cormi/Documents/ImageProcessing/landmask/cropdepth_Polygon.shp")
     cropdepth = spTransform(cropdepth, crs(depth))
     depth = mask(depth,cropdepth)
     
@@ -1144,15 +1155,15 @@ for (ii in 1:length(sat.images.list2)) {
       raster.dat[[i]] = ras.dat[[val.in[i,1]]]-(val.in$slope[i]*ras.dat[[val.in[i,2]]])
     }
     
-    #add WCC layers to raster stack
-    dat.stack = stack(dat.stack,raster.dat[[3]],raster.dat[[1]]) 
+    #add WCC layers to raster stack (lyzengas green and red)
+    dat.stack = stack(dat.stack,raster.dat[[3]], raster.dat[[1]]) 
     
     names(dat.stack) = c("blue","green","red","lyzgr","lyzgrbl")
+    
     
     #crop depth
     depth<-mask(x=depth, mask=offshoremask, inverse=T)
     depth = mask(x=depth, mask = water)
-    
     
     #try with depth
     dat.stack = stack(dat.stack, depth)
